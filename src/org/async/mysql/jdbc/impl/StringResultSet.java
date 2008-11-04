@@ -26,35 +26,40 @@ public class StringResultSet extends AbstractResultSet<String[]> {
 			try {
 				Field f = fields[i];
 				String s = next[i];
-				switch (f.getType()) {
-				case MysqlDefs.FIELD_TYPE_TINY:
-				case MysqlDefs.FIELD_TYPE_SHORT:
-				case MysqlDefs.FIELD_TYPE_LONG:
-				case MysqlDefs.FIELD_TYPE_INT24:
-				case MysqlDefs.FIELD_TYPE_LONGLONG:
-				case MysqlDefs.FIELD_TYPE_YEAR:
-					unpackedRow[i] = Long.parseLong(s);
-					break;
-				case MysqlDefs.FIELD_TYPE_FLOAT:
-				case MysqlDefs.FIELD_TYPE_DOUBLE:
-					unpackedRow[i] = Double.parseDouble(s);
-					break;
+				if (s == null) {
+					unpackedRow[i] = null;
+				} else {
+					switch (f.getType()) {
+					case MysqlDefs.FIELD_TYPE_TINY:
+					case MysqlDefs.FIELD_TYPE_SHORT:
+					case MysqlDefs.FIELD_TYPE_LONG:
+					case MysqlDefs.FIELD_TYPE_INT24:
+					case MysqlDefs.FIELD_TYPE_LONGLONG:
+					case MysqlDefs.FIELD_TYPE_YEAR:
+						unpackedRow[i] = Long.parseLong(s);
+						break;
+					case MysqlDefs.FIELD_TYPE_FLOAT:
+					case MysqlDefs.FIELD_TYPE_DOUBLE:
+						unpackedRow[i] = Double.parseDouble(s);
+						break;
 
-				case MysqlDefs.FIELD_TYPE_TIME:
-					unpackedRow[i] = new Time(timeFormat.parse(s).getTime());
-					break;
-				case MysqlDefs.FIELD_TYPE_DATE:
-					unpackedRow[i] = new Date(dateFormat.parse(s).getTime());
-					break;
-				case MysqlDefs.FIELD_TYPE_DATETIME:
-				case MysqlDefs.FIELD_TYPE_TIMESTAMP:
-					unpackedRow[i] = new Timestamp(datetimeFormat.parse(s).getTime());
-					break;
-				// case MysqlDefs.FIELD_TYPE_DECIMAL:
-				// case MysqlDefs.FIELD_TYPE_NEW_DECIMAL:
+					case MysqlDefs.FIELD_TYPE_TIME:
+						unpackedRow[i] = new Time(timeFormat.parse(s).getTime());
+						break;
+					case MysqlDefs.FIELD_TYPE_DATE:
+						unpackedRow[i] = new Date(dateFormat.parse(s).getTime());
+						break;
+					case MysqlDefs.FIELD_TYPE_DATETIME:
+					case MysqlDefs.FIELD_TYPE_TIMESTAMP:
+						unpackedRow[i] = new Timestamp(datetimeFormat.parse(s)
+								.getTime());
+						break;
+					// case MysqlDefs.FIELD_TYPE_DECIMAL:
+					// case MysqlDefs.FIELD_TYPE_NEW_DECIMAL:
 					default:
-						unpackedRow[i]=s;
-					break;
+						unpackedRow[i] = s;
+						break;
+					}
 				}
 			} catch (Exception ex) {
 				ex.printStackTrace();

@@ -6,8 +6,8 @@ import java.sql.Time;
 import java.sql.Timestamp;
 
 import org.async.jdbc.Callback;
-import org.async.jdbc.HasState;
 import org.async.jdbc.Connection;
+import org.async.jdbc.HasState;
 import org.async.jdbc.PreparedQuery;
 import org.async.jdbc.PreparedStatement;
 import org.async.jdbc.Query;

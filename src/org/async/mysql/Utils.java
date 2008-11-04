@@ -8,18 +8,18 @@ import java.util.Date;
 
 
 public class Utils {
-
+	// TODO session calendar
 	public static long readLong(byte[] ar, int offset,int length) {
 		long rs = 0;
-		for (int i = offset; i < length; i++) {
-			rs += (ar[i] & 0xFF) << (i * 8);
+		for (int i = 0; i < length; i++) {
+			rs += (ar[offset+i] & 0xFF) << (i * 8);
 		}
 		return rs;
 	}
 
 	private static Calendar calendar = Calendar.getInstance();
 
-	// TODO session calendar
+
 	public static void writeLong(ByteBuffer out, long value, int length) {
 		for (int i = 0; i < length; i++) {
 			out.put((byte) ((value >> (i * 8)) & 0xFF));
@@ -39,17 +39,26 @@ public class Utils {
 	}
 
 	public static void lengthEncoded(ByteBuffer out, String str) {
-		lengthEncoded(out, str.getBytes());
+		lengthEncodedString(out, str.getBytes());
 
 	}
 
-	public static void lengthEncoded(ByteBuffer out, byte[] data) {
+	public static void lengthEncodedString(ByteBuffer out, byte[] data) {
 		if (data == null) {
 			out.put((byte) 251);
 		} else {
 			if (data.length > 250) {
-				// TODO calculate size
-				// out.write(250+data.length);
+				if(data.length>0xFFFFFF) {
+					out.put((byte)(254));
+					Utils.writeLong(out,data.length, 4);
+				} else if(data.length>0xFFFF) {
+					out.put((byte)(253));
+					Utils.writeLong(out,data.length, 3);
+				} else if(data.length>0xFF) {
+					out.put((byte)(252));
+					Utils.writeLong(out,data.length, 2);
+				}
+				out.put(data);
 			} else {
 				out.put((byte) data.length);
 				out.put(data);

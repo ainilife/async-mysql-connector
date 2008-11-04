@@ -15,14 +15,14 @@ public class Parser {
 	private int packetSize = -1;
 	private int itemSize = 0;
 	private int skip = 0;
-	// private int packetNum;// TODO check this
+	// private int packetNum;// TODO check packetNum
 	private Byte firstByte = null;
 	private Packet packet = null;
 	private Object message = null;
 	private Callback callback;
+	private boolean isNull = false;
 
 	public Packet parse(ByteBuffer in) {
-		// TODO packet size and read until end
 		while (in.remaining() > 0) {
 			if (skip > 0) {
 				// TODO do this in on step
@@ -76,20 +76,14 @@ public class Parser {
 						if (packetSize < 0) {
 							packetSize = (int) Utils.readLong(buffer.array(),
 									0, 3);
-							// System.out.println("size="+packetSize);
-							// byte[] bb=new byte[packetSize];
-							// System.arraycopy(in.array(),in.position(),bb , 0,
-							// bb.length);
-							// System.out.println(Arrays.toString(bb));
-							// packetNum = (int) buffer.array()[3] & 0xFF;
 
 						} else {
 							PacketMap<Packet> map = protocol.getPacketMap(
 									waitFor.get(0), firstByte);
 							packet = map.getAssembler().process(dataIdx,
-									buffer, packet, message);
+									isNull ? null : buffer, packet, message);
 							dataIdx++;
-
+							isNull = false;
 							if (dataIdx == map.size() || packetSize == 0) {
 								if (packetSize != 0) {
 									skip = packetSize;
@@ -123,30 +117,20 @@ public class Parser {
 		buffer.put(in.get());
 		byte[] ar = buffer.array();
 		int f = ar[0] & 0xFF;
-		int limit = -1;
+		buffer.clear();
 		if (f == 251) {
-			buffer.limit(buffer.position());
+			buffer.limit(0);
+			isNull = true;
 		} else if (f > 251) {
-			// TODO TEST
-			if (f == 252 && buffer.position() > 2) {
-				limit = (int) Utils.readLong(ar, 1, 2);
-				in.position(in.position() + 2);
-				packetSize -= 2;
-			} else if (f == 253 && buffer.position() > 3) {
-				limit = (int) Utils.readLong(ar, 1, 3);
-				packetSize -= 3;
-				in.position(in.position() + 3);
-			} else if (f == 254 && buffer.position() > 8) {
-				limit = (int) Utils.readLong(ar, 1, 8);
-				packetSize -= 8;
-				in.position(in.position() + 8);
+			if (f == 252) {
+				buffer.limit(2);
+			} else if (f == 253) {
+				buffer.limit(3);
+			} else if (f == 254) {
+				buffer.limit(8);
 			}
-			if (limit > -1) {
-				buffer.clear();
-				buffer.limit(limit);
-			}
+
 		} else {
-			buffer.clear();
 			buffer.limit(1);
 			buffer.put((byte) f);
 		}
@@ -157,17 +141,14 @@ public class Parser {
 		buffer.put(in.get());
 		byte[] ar = buffer.array();
 		int f = ar[0] & 0xFF;
-		// System.out.println("F="+f);
 		if (f == 251) {
+			isNull = true;
 			buffer.clear();
-			buffer.limit(buffer.position());
+			buffer.limit(0);
 		} else if (f > 251) {
-			// TODO TEST this
 			if (buffer.position() > f - 250) {
 				int limit = (int) Utils.readLong(ar, 1, f - 250);
 				buffer.clear();
-				packetSize -= f - 250;
-				in.position(in.position() + (f - 250));
 				buffer.limit(limit);
 			}
 		} else {

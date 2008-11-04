@@ -15,8 +15,7 @@ public class RowDataAssembler implements PacketAssembler<RowData> {
 			AbstractResultSet<?> rs=(AbstractResultSet<?>) message;
 			packet=new RowData(rs.getFields().length);
 		}
-		//TODO NULL Support
-		packet.getData()[step]=new String(buffer.array(),0,buffer.limit());
+		packet.getData()[step]=buffer==null?null:new String(buffer.array(),0,buffer.limit());
 		return packet;
 	}
 
