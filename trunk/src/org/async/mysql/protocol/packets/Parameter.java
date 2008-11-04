@@ -4,7 +4,7 @@ import org.async.mysql.protocol.Packet;
 import org.async.mysql.protocol.Parser;
 
 public class Parameter implements Packet {
-	//TODO seems like not used
+	//seems like not used
 	private int type;
 	private int flags;
 	private int decimals;

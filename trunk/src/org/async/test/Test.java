@@ -21,8 +21,6 @@ import org.async.net.Multiplexer;
 public class Test {
 
 	public static void main(String[] args) throws IOException, SQLException {
-		// TODO NULL bitmap
-		// TODO NULL values
 		SocketChannel channel = SocketChannel.open();
 		channel.configureBlocking(false);
 		channel.connect(new InetSocketAddress("localhost", 3306));
@@ -64,14 +62,13 @@ public class Test {
 						successCallback);
 		st.executeUpdate("TRUNCATE test",successCallback);
 		PreparedStatement insert = connection
-		.prepareStatement("INSERT INTO test SET text0=?,varchar0=?,date0=?");
+		.prepareStatement("INSERT INTO test SET varchar0=?,date0=?");
 		insert.executeUpdate(new PreparedQuery() {
 
 			@Override
 			public void query(PreparedStatement pstmt) throws SQLException {
-				pstmt.setString(1,"dummy text filler");
-				pstmt.setString(2,"dummy varchar filler");
-				pstmt.setDate(3,new Date(System.currentTimeMillis()));
+				pstmt.setString(1,"text text text");
+				pstmt.setDate(2,new Date(System.currentTimeMillis()));
 			}
 
 		},successCallback);

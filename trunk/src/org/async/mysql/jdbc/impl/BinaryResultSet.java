@@ -2,7 +2,6 @@ package org.async.mysql.jdbc.impl;
 
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -24,42 +23,45 @@ public class BinaryResultSet extends AbstractResultSet<byte[][]> {
 			try {
 				Field f = fields[i];
 				byte[] data = next[i];
-				switch (f.getType()) {
-				case MysqlDefs.FIELD_TYPE_TINY:
-				case MysqlDefs.FIELD_TYPE_SHORT:
-				case MysqlDefs.FIELD_TYPE_LONG:
-				case MysqlDefs.FIELD_TYPE_INT24:
-				case MysqlDefs.FIELD_TYPE_LONGLONG:
-				case MysqlDefs.FIELD_TYPE_YEAR:
-					unpackedRow[i] = Utils.readLong(data, 0, data.length);
-					break;
-				case MysqlDefs.FIELD_TYPE_FLOAT:
-					unpackedRow[i] = Float.intBitsToFloat((int) Utils.readLong(
-							data, 0, data.length));
-					break;
-				case MysqlDefs.FIELD_TYPE_DOUBLE:
-					unpackedRow[i] = Double.longBitsToDouble(Utils.readLong(
-							data, 0, data.length));
-					break;
+				if (data == null) {
+					unpackedRow[i] = null;
+				} else
+					switch (f.getType()) {
+					case MysqlDefs.FIELD_TYPE_TINY:
+					case MysqlDefs.FIELD_TYPE_SHORT:
+					case MysqlDefs.FIELD_TYPE_LONG:
+					case MysqlDefs.FIELD_TYPE_INT24:
+					case MysqlDefs.FIELD_TYPE_LONGLONG:
+					case MysqlDefs.FIELD_TYPE_YEAR:
+						unpackedRow[i] = Utils.readLong(data, 0, data.length);
+						break;
+					case MysqlDefs.FIELD_TYPE_FLOAT:
+						unpackedRow[i] = Float.intBitsToFloat((int) Utils
+								.readLong(data, 0, data.length));
+						break;
+					case MysqlDefs.FIELD_TYPE_DOUBLE:
+						unpackedRow[i] = Double.longBitsToDouble(Utils
+								.readLong(data, 0, data.length));
+						break;
 
-				case MysqlDefs.FIELD_TYPE_TIME:
-				case MysqlDefs.FIELD_TYPE_DATE:
-				case MysqlDefs.FIELD_TYPE_DATETIME:
-				case MysqlDefs.FIELD_TYPE_TIMESTAMP:
-					unpackedRow[i] = unpackDate(data,f.getType());
-					break;
-				case MysqlDefs.FIELD_TYPE_TINY_BLOB:
-				case MysqlDefs.FIELD_TYPE_MEDIUM_BLOB:
-				case MysqlDefs.FIELD_TYPE_LONG_BLOB:
-				case MysqlDefs.FIELD_TYPE_BLOB:
-				case MysqlDefs.FIELD_TYPE_VAR_STRING:
-				case MysqlDefs.FIELD_TYPE_VARCHAR:
-				case MysqlDefs.FIELD_TYPE_STRING:
-					unpackedRow[i] = new String(data);
-					break;
-				// case MysqlDefs.FIELD_TYPE_DECIMAL:
-				// case MysqlDefs.FIELD_TYPE_NEW_DECIMAL:
-				}
+					case MysqlDefs.FIELD_TYPE_TIME:
+					case MysqlDefs.FIELD_TYPE_DATE:
+					case MysqlDefs.FIELD_TYPE_DATETIME:
+					case MysqlDefs.FIELD_TYPE_TIMESTAMP:
+						unpackedRow[i] = unpackDate(data, f.getType());
+						break;
+					case MysqlDefs.FIELD_TYPE_TINY_BLOB:
+					case MysqlDefs.FIELD_TYPE_MEDIUM_BLOB:
+					case MysqlDefs.FIELD_TYPE_LONG_BLOB:
+					case MysqlDefs.FIELD_TYPE_BLOB:
+					case MysqlDefs.FIELD_TYPE_VAR_STRING:
+					case MysqlDefs.FIELD_TYPE_VARCHAR:
+					case MysqlDefs.FIELD_TYPE_STRING:
+						unpackedRow[i] = new String(data);
+						break;
+					// case MysqlDefs.FIELD_TYPE_DECIMAL:
+					// case MysqlDefs.FIELD_TYPE_NEW_DECIMAL:
+					}
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}

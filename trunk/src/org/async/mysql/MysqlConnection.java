@@ -75,7 +75,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		Utils.nullTerminated(out, user);
 		if (password.length() != 0) {
 			Utils
-					.lengthEncoded(out, scramble411(password, handshake
+					.lengthEncodedString(out, scramble411(password, handshake
 							.getSeed()));
 		} else {
 			Utils.filler(out, 1);
@@ -89,7 +89,6 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	// public void sendLongData(int statementId, int paramNum, int type,
 	// Object data) throws SQLException {
-	// //TODO calculate size and stream packet sending
 	// out.put((byte) MysqlDefs.COM_STMT_SEND_LONG_DATA);
 	// Utils.writeLong(out, statementId, 4);
 	// Utils.writeLong(out, paramNum - 1, 2);
@@ -106,7 +105,6 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	private void execute(int statementId, int[] types, Object[] params)
 			throws SQLException {
-		// TODO calculate size and stream packet sending
 		out.put((byte) MysqlDefs.COM_STMT_EXECUTE);
 		Utils.writeLong(out, statementId, 4);
 		Utils.writeLong(out, 0, 1);

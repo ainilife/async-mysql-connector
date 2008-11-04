@@ -20,7 +20,6 @@ public class Field implements Packet {
 	private int decimals;
 	private long def;
 
-	// TODO Null support
 	public void onSuccess(Parser parser) {
 		if (parser.getMessage() != null
 				&& parser.getMessage() instanceof ResultSet) {
