@@ -1,0 +1,326 @@
+package org.async.mysql.out;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.async.mysql.MysqlDefs;
+import org.async.mysql.facade.AsyncConnection;
+import org.async.mysql.facade.Callback;
+import org.async.mysql.facade.HasState;
+import org.async.mysql.facade.InnerConnection;
+import org.async.mysql.facade.PreparedStatement;
+import org.async.mysql.facade.Query;
+import org.async.mysql.facade.ResultSetCallback;
+import org.async.mysql.facade.Statement;
+import org.async.mysql.facade.SuccessCallback;
+import org.async.mysql.facade.impl.AbstractResultSet;
+import org.async.mysql.facade.impl.PreparedStatementImpl;
+import org.async.mysql.facade.impl.StatementImpl;
+import org.async.mysql.in.Packet;
+import org.async.mysql.in.Parser;
+import org.async.mysql.in.Protocol;
+import org.async.mysql.in.packets.EOF;
+import org.async.mysql.in.packets.Error;
+import org.async.mysql.in.packets.Handshake;
+import org.async.mysql.in.packets.OK;
+import org.async.mysql.in.packets.PSOK;
+import org.async.net.ChannelProcessor;
+
+public class MysqlConnection implements ChannelProcessor, AsyncConnection,
+		InnerConnection {
+	private Handshake handshake;
+	private final ByteBuffer out = ByteBuffer.allocate(65536);
+	private final ByteBuffer in = ByteBuffer.allocate(65536);
+	private SocketChannel channel;
+	private Parser parser = new Parser();
+	private List<Query> queries = new LinkedList<Query>();
+	private List<Callback> callbacks = new LinkedList<Callback>();
+	private String user;
+	private String password;
+	private String database;
+	private SelectionKey key;
+	private boolean ready = false;
+
+	public MysqlConnection(SelectionKey key, String user, String password,
+			String database) {
+		super();
+		this.channel = (SocketChannel) key.channel();
+		this.key = key;
+		this.user = user;
+		this.password = password;
+		this.database = database;
+		out.position(4);
+
+	}
+
+	public void auth(String user, String password, String database)
+			throws SQLException {
+
+		Utils.writeLong(out, MysqlDefs.CLIENT_LONG_PASSWORD
+				| MysqlDefs.CLIENT_CONNECT_WITH_DB
+				| MysqlDefs.CLIENT_PROTOCOL_41
+				| MysqlDefs.CLIENT_SECURE_CONNECTION, 4);
+		Utils.writeLong(out, 65536, 4);
+		Utils.writeLong(out, 8, 1);
+		Utils.filler(out, 23);
+		Utils.nullTerminated(out, user);
+		if (password.length() != 0) {
+			Utils
+					.lengthEncoded(out, scramble411(password, handshake
+							.getSeed()));
+		} else {
+			Utils.filler(out, 1);
+		}
+		// Utils.filler(out, 1);
+		Utils.nullTerminated(out, database);
+		send(1);
+		parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
+
+	}
+
+//	public void sendLongData(int statementId, int paramNum, int type,
+//			Object data) throws SQLException {
+//		//TODO  calculate size and stream packet sending
+//		out.put((byte) MysqlDefs.COM_STMT_SEND_LONG_DATA);
+//		Utils.writeLong(out, statementId, 4);
+//		Utils.writeLong(out, paramNum - 1, 2);
+//		Utils.writeLong(out, type, 2);
+//		Utils.write(out, type, data);
+//		send(0);
+//	}
+
+	public void execute(int statementId, int[] types, Object[] params)
+			throws SQLException {
+		// TODO calculate size and stream packet sending
+		out.put((byte) MysqlDefs.COM_STMT_EXECUTE);
+		Utils.writeLong(out, statementId, 4);
+		Utils.writeLong(out, 0, 1);
+		Utils.writeLong(out, 1, 4);
+		int p = out.position();
+		int paramCount = params.length;
+		int nullCount = ((paramCount + 7) / 8);
+		byte[] nullBitsBuffer = new byte[nullCount];
+		Utils.filler(out, nullCount);
+		// Send data to server
+		Utils.writeLong(out, 1, 1);
+		for (int t : types) {
+			Utils.writeLong(out, t, 2);
+		}
+		for (int i = 0; i < params.length; i++) {
+			if (params[i] == null) {
+				nullBitsBuffer[i / 8] |= (1 << (i & 7));
+			} else {
+				Utils.write(out, types[i], params[i]);
+			}
+		}
+		System.arraycopy(nullBitsBuffer, 0, out.array(), p,
+				nullBitsBuffer.length);
+		parser.getWaitFor().add(Protocol.RESULT_SET_PACKET_BINARY);
+		send(0);
+	}
+
+	public void close(int statementId) throws SQLException {
+		out.put((byte) MysqlDefs.COM_STMT_CLOSE);
+		Utils.writeLong(out, statementId, 4);
+		//parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
+		send(0);
+
+	}
+
+	private void send(int num) throws SQLException {
+		try {
+			out.flip();
+			Utils.writeLong(out, out.limit() - 4, 3);
+			Utils.writeLong(out, num, 1);
+			out.position(0);
+			while (out.remaining() > 0) {
+				channel.write(out);
+			}
+
+			// byte[] b=new byte[out.limit()];
+			// System.out.println("SEND");
+			// System.arraycopy(out.array(), 0, b, 0,out.limit());
+			// System.out.println(Arrays.toString(b));
+			out.clear();
+			out.position(4);
+		} catch (Exception e) {
+			throw new SQLException(e.getMessage());
+		}
+	}
+
+	public void query(String sql) throws SQLException {
+		out.put((byte) MysqlDefs.COM_QUERY);
+		out.put(sql.getBytes());
+		send(0);
+		parser.getWaitFor().add(Protocol.RESULT_SET_PACKET);
+
+	}
+
+	public void prepare(String sql) throws SQLException {
+		out.put((byte) MysqlDefs.COM_STMT_PREPARE);
+		out.put(sql.getBytes());
+		send(0);
+		parser.getWaitFor().add(Protocol.PSOK_PACKET);
+
+	}
+
+	private static byte[] scramble411(String password, String seed) {
+		MessageDigest md;
+		try {
+			md = MessageDigest.getInstance("SHA-1");
+
+			byte[] passwordHashStage1 = md.digest(password.getBytes());
+			md.reset();
+
+			byte[] passwordHashStage2 = md.digest(passwordHashStage1);
+			md.reset();
+			md.update(seed.getBytes());
+			md.update(passwordHashStage2);
+			byte[] toBeXord = md.digest();
+
+			int numToXor = toBeXord.length;
+
+			for (int i = 0; i < numToXor; i++) {
+				toBeXord[i] = (byte) (toBeXord[i] ^ passwordHashStage1[i]);
+			}
+			return toBeXord;
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} //$NON-NLS-1$
+		return null;
+
+	}
+
+	public void accept(SelectionKey key) {
+		throw new IllegalStateException();
+
+	}
+
+	public void close(SelectionKey key) {
+
+	}
+
+	public void connect(SelectionKey key) {
+		SocketChannel channel = (SocketChannel) key.channel();
+		try {
+			channel.finishConnect();
+			key.interestOps(SelectionKey.OP_READ);
+			parser.getWaitFor().add(Protocol.HAND_SHAKE);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void read(SelectionKey key) {
+		SocketChannel channel = (SocketChannel) key.channel();
+		try {
+			in.clear();
+			int read = channel.read(in);
+			if (read > -1) {
+				in.limit(read);
+				in.position(0);
+				while (in.remaining() > 0) {
+					Packet result = parser.parse(in);
+					if (result != null) {
+
+						//System.out.println(result);
+						if (result instanceof EOF) {
+							if (((HasState) parser.getMessage()).isOver()) {
+								if (parser.getMessage() instanceof AbstractResultSet) {
+									AbstractResultSet<?> rs = (AbstractResultSet<?>) parser
+											.getMessage();
+									Callback callback = callbacks.remove(0);
+									if (callback != null) {
+										((ResultSetCallback) callback)
+												.onResultSet(rs);
+									}
+								} 							}
+							if (!queries.isEmpty())
+								key.interestOps(SelectionKey.OP_WRITE);
+						} else if (result instanceof OK) {
+							if (!ready) {
+								ready = true;
+							} else {
+								Callback callback = callbacks.remove(0);
+								if (callback != null) {
+									((SuccessCallback) callback)
+											.onSuccess((OK) result);
+								}
+							}
+							if (!queries.isEmpty())
+								key.interestOps(SelectionKey.OP_WRITE);
+						} else if (result instanceof PSOK) {
+							callbacks.remove(0);
+							if (!queries.isEmpty())
+								key.interestOps(SelectionKey.OP_WRITE);
+						} else if (result instanceof Error) {
+							Callback callback = callbacks.remove(0);
+							if (callback != null) {
+								Error e = (Error) result;
+								callback.onError(new SQLException(e
+										.getMessage(), e.getSqlState()));
+							}
+							if (!queries.isEmpty())
+								key.interestOps(SelectionKey.OP_WRITE);
+
+						} else if (result instanceof Handshake) {
+							this.handshake = (Handshake) result;
+							auth(user, password, database);
+						}
+
+					}
+				}
+			} else {
+				// TODO close
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void write(SelectionKey key) {
+		try {
+			Query q = queries.remove(0);
+			q.query(this);
+			key.interestOps(SelectionKey.OP_READ);
+		} catch (SQLException e) {
+			Callback callback = callbacks.remove(0);
+			if (callback != null) {
+				callback.onError(e);
+			}
+		}
+	}
+
+	public void query(Query q, Callback callback) {
+		queries.add(q);
+		if (ready && callbacks.size() == 0) {
+			key.interestOps(SelectionKey.OP_WRITE);
+		}
+		callbacks.add(callback);
+
+	}
+
+	public Parser getParser() {
+		return parser;
+	}
+
+	public void setParser(Parser parser) {
+		this.parser = parser;
+	}
+
+	public Statement createStatement() {
+		return new StatementImpl(this);
+	}
+
+	public PreparedStatement prepareStatement(String sql) throws SQLException {
+		return new PreparedStatementImpl(sql, this);
+	}
+
+}
