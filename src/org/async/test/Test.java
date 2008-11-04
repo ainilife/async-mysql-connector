@@ -7,15 +7,15 @@ import java.nio.channels.SocketChannel;
 import java.sql.Date;
 import java.sql.SQLException;
 
+import org.async.jdbc.AsyncConnection;
+import org.async.jdbc.PreparedQuery;
+import org.async.jdbc.PreparedStatement;
+import org.async.jdbc.ResultSet;
+import org.async.jdbc.ResultSetCallback;
+import org.async.jdbc.Statement;
+import org.async.jdbc.SuccessCallback;
 import org.async.mysql.MysqlConnection;
-import org.async.mysql.facade.AsyncConnection;
-import org.async.mysql.facade.PreparedQuery;
-import org.async.mysql.facade.PreparedStatement;
-import org.async.mysql.facade.ResultSet;
-import org.async.mysql.facade.ResultSetCallback;
-import org.async.mysql.facade.Statement;
-import org.async.mysql.facade.SuccessCallback;
-import org.async.mysql.in.packets.OK;
+import org.async.mysql.protocol.packets.OK;
 import org.async.net.Multiplexer;
 
 public class Test {
@@ -23,7 +23,6 @@ public class Test {
 	public static void main(String[] args) throws IOException, SQLException {
 		// TODO NULL bitmap
 		// TODO NULL values
-		// TODO check Date
 		SocketChannel channel = SocketChannel.open();
 		channel.configureBlocking(false);
 		channel.connect(new InetSocketAddress("localhost", 3306));
@@ -101,7 +100,7 @@ public class Test {
 
 		}, rsCallback);
 		ps.close();
-
+		connection.close();
 		while (true) {
 			mpx.select();
 		}

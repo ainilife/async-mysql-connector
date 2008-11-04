@@ -1,6 +1,6 @@
 package org.async.mysql;
 
-import org.async.mysql.in.Protocol;
+import org.async.mysql.protocol.Protocol;
 
 public class MysqlDefs {
 	public static int CLIENT_LONG_PASSWORD = 1;

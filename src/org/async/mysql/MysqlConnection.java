@@ -10,27 +10,28 @@ import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.async.mysql.facade.AsyncConnection;
-import org.async.mysql.facade.Callback;
-import org.async.mysql.facade.HasState;
-import org.async.mysql.facade.InnerConnection;
-import org.async.mysql.facade.PreparedStatement;
-import org.async.mysql.facade.Query;
-import org.async.mysql.facade.ResultSetCallback;
-import org.async.mysql.facade.SilentQuery;
-import org.async.mysql.facade.Statement;
-import org.async.mysql.facade.SuccessCallback;
-import org.async.mysql.facade.impl.AbstractResultSet;
-import org.async.mysql.facade.impl.PreparedStatementImpl;
-import org.async.mysql.facade.impl.StatementImpl;
-import org.async.mysql.in.Packet;
-import org.async.mysql.in.Parser;
-import org.async.mysql.in.Protocol;
-import org.async.mysql.in.packets.EOF;
-import org.async.mysql.in.packets.Error;
-import org.async.mysql.in.packets.Handshake;
-import org.async.mysql.in.packets.OK;
-import org.async.mysql.in.packets.PSOK;
+import org.async.jdbc.AsyncConnection;
+import org.async.jdbc.Callback;
+import org.async.jdbc.Connection;
+import org.async.jdbc.HasState;
+import org.async.jdbc.PreparedStatement;
+import org.async.jdbc.Query;
+import org.async.jdbc.ResultSetCallback;
+import org.async.jdbc.SilentQuery;
+import org.async.jdbc.Statement;
+import org.async.jdbc.SuccessCallback;
+import org.async.mysql.jdbc.impl.AbstractResultSet;
+import org.async.mysql.jdbc.impl.InnerConnection;
+import org.async.mysql.jdbc.impl.PreparedStatementImpl;
+import org.async.mysql.jdbc.impl.StatementImpl;
+import org.async.mysql.protocol.Packet;
+import org.async.mysql.protocol.Parser;
+import org.async.mysql.protocol.Protocol;
+import org.async.mysql.protocol.packets.EOF;
+import org.async.mysql.protocol.packets.Error;
+import org.async.mysql.protocol.packets.Handshake;
+import org.async.mysql.protocol.packets.OK;
+import org.async.mysql.protocol.packets.PSOK;
 import org.async.net.ChannelProcessor;
 
 public class MysqlConnection implements ChannelProcessor, AsyncConnection,
@@ -47,6 +48,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	private String database;
 	private SelectionKey key;
 	private boolean ready = false;
+	private boolean closed = false;
 
 	public MysqlConnection(SelectionKey key, String user, String password,
 			String database) {
@@ -146,6 +148,20 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	}
 
+	public void close() throws SQLException {
+		query(new SilentQuery() {
+			@Override
+			public void query(Connection connection) throws SQLException {
+				out.put((byte) MysqlDefs.COM_QUIT);
+				send(0);
+				close(key);
+				key=null;
+			}
+
+		});
+		closed = true;
+	}
+
 	private void send(int num) throws SQLException {
 		try {
 			out.flip();
@@ -225,7 +241,13 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	public void close(SelectionKey key) {
-
+		key.cancel();
+		SocketChannel channel = (SocketChannel) key.channel();
+		try {
+			channel.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void connect(SelectionKey key) {
@@ -298,7 +320,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 					}
 				}
 			} else {
-				// TODO close
+				close(key);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -309,8 +331,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		try {
 			Query q = queries.remove(0);
 			q.query(this);
-			if(!(q instanceof SilentQuery)||queries.isEmpty()) {
-				key.interestOps(SelectionKey.OP_READ);
+			if (!(q instanceof SilentQuery) || queries.isEmpty()) {
+				if (this.key!=null)
+					key.interestOps(SelectionKey.OP_READ);
 			}
 		} catch (SQLException e) {
 			Callback callback = callbacks.remove(0);
@@ -320,7 +343,10 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		}
 	}
 
-	public void query(Query q, Callback callback) {
+	public void query(Query q, Callback callback) throws SQLException {
+		if (isClosed())
+			throw new SQLException(
+					" No operations allowed after connection closed.");
 		queries.add(q);
 		if (ready && callbacks.size() == 0) {
 			key.interestOps(SelectionKey.OP_WRITE);
@@ -329,12 +355,14 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	}
 
-	public void query(SilentQuery q) {
+	public void query(SilentQuery q) throws SQLException {
+		if (isClosed())
+			throw new SQLException(
+					" No operations allowed after connection closed.");
 		queries.add(q);
-		if (ready && callbacks.size() == 0) {
+		if (ready && callbacks.isEmpty()&&queries.isEmpty()) {
 			key.interestOps(SelectionKey.OP_WRITE);
 		}
-
 
 	}
 
@@ -352,6 +380,10 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	public PreparedStatement prepareStatement(String sql) throws SQLException {
 		return new PreparedStatementImpl(sql, this);
+	}
+
+	public boolean isClosed() {
+		return closed;
 	}
 
 }
