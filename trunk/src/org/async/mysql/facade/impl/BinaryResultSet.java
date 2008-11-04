@@ -2,11 +2,12 @@ package org.async.mysql.facade.impl;
 
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 
 import org.async.mysql.MysqlDefs;
-import org.async.mysql.in.Utils;
+import org.async.mysql.Utils;
 import org.async.mysql.in.packets.Field;
 
 public class BinaryResultSet extends AbstractResultSet<byte[][]> {
@@ -18,7 +19,7 @@ public class BinaryResultSet extends AbstractResultSet<byte[][]> {
 
 	@Override
 	protected Object[] unpack(byte[][] next) {
-		unpackedRow=new Object[fields.length];
+		unpackedRow = new Object[fields.length];
 		for (int i = 0, e = fields.length; i < e; i++) {
 			try {
 				Field f = fields[i];
@@ -45,7 +46,7 @@ public class BinaryResultSet extends AbstractResultSet<byte[][]> {
 				case MysqlDefs.FIELD_TYPE_DATE:
 				case MysqlDefs.FIELD_TYPE_DATETIME:
 				case MysqlDefs.FIELD_TYPE_TIMESTAMP:
-					unpackedRow[i] = unpackDate(data);
+					unpackedRow[i] = unpackDate(data,f.getType());
 					break;
 				case MysqlDefs.FIELD_TYPE_TINY_BLOB:
 				case MysqlDefs.FIELD_TYPE_MEDIUM_BLOB:
@@ -66,7 +67,7 @@ public class BinaryResultSet extends AbstractResultSet<byte[][]> {
 		return unpackedRow;
 	}
 
-	private Date unpackDate(byte[] data) {
+	private Date unpackDate(byte[] data, int type) {
 		if (data.length == 8) {
 			calendar.set(Calendar.YEAR, 0);
 			calendar.set(Calendar.MONTH, 0);
@@ -76,17 +77,23 @@ public class BinaryResultSet extends AbstractResultSet<byte[][]> {
 			calendar.set(Calendar.SECOND, data[7]);
 			return new Time(calendar.getTime().getTime());
 		} else {
-			calendar.set(Calendar.YEAR, (data[1] << 8) + data[0]);
-			calendar.set(Calendar.MONTH, data[2]);
-			calendar.set(Calendar.DAY_OF_MONTH, data[3]);
-			calendar.set(Calendar.HOUR_OF_DAY, data[4]);
-			calendar.set(Calendar.MINUTE, data[5]);
-			calendar.set(Calendar.SECOND, data[6]);
-			if (data.length == 11) {
-				Timestamp timestamp = new Timestamp(calendar.getTime()
-						.getTime());
-				timestamp.setNanos((int) Utils.readLong(data, 7, 4));
-				return timestamp;
+			calendar.set(Calendar.YEAR, ((data[1] & 0xFF) << 8)
+					+ (data[0] & 0xFF));
+			calendar.set(Calendar.MONTH, data[2] & 0xFF);
+			calendar.set(Calendar.DAY_OF_MONTH, data[3] & 0xFF);
+			calendar.set(Calendar.HOUR_OF_DAY, data[4] & 0xFF);
+			calendar.set(Calendar.MINUTE, data[5] & 0xFF);
+			calendar.set(Calendar.SECOND, data[6] & 0xFF);
+			if (type == MysqlDefs.FIELD_TYPE_DATETIME
+					|| type == MysqlDefs.FIELD_TYPE_TIMESTAMP) {
+				if (data.length == 11) {
+					Timestamp timestamp = new Timestamp(calendar.getTime()
+							.getTime());
+					timestamp.setNanos((int) Utils.readLong(data, 7, 4));
+					return timestamp;
+				} else {
+					return new java.sql.Timestamp(calendar.getTime().getTime());
+				}
 			} else {
 				return new java.sql.Date(calendar.getTime().getTime());
 			}

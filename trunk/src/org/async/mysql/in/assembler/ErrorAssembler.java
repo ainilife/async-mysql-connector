@@ -2,8 +2,8 @@ package org.async.mysql.in.assembler;
 
 import java.nio.ByteBuffer;
 
+import org.async.mysql.Utils;
 import org.async.mysql.in.PacketAssembler;
-import org.async.mysql.in.Utils;
 import org.async.mysql.in.packets.Error;
 
 public class ErrorAssembler implements PacketAssembler<Error> {
