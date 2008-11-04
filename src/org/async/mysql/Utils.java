@@ -1,13 +1,22 @@
-package org.async.mysql.out;
+package org.async.mysql;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
 
-import org.async.mysql.MysqlDefs;
+
 
 public class Utils {
+
+	public static long readLong(byte[] ar, int offset,int length) {
+		long rs = 0;
+		for (int i = offset; i < length; i++) {
+			rs += (ar[i] & 0xFF) << (i * 8);
+		}
+		return rs;
+	}
+
 	private static Calendar calendar = Calendar.getInstance();
 
 	// TODO session calendar

@@ -1,4 +1,4 @@
-package org.async.mysql.out;
+package org.async.mysql;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -10,7 +10,6 @@ import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.async.mysql.MysqlDefs;
 import org.async.mysql.facade.AsyncConnection;
 import org.async.mysql.facade.Callback;
 import org.async.mysql.facade.HasState;
@@ -18,6 +17,7 @@ import org.async.mysql.facade.InnerConnection;
 import org.async.mysql.facade.PreparedStatement;
 import org.async.mysql.facade.Query;
 import org.async.mysql.facade.ResultSetCallback;
+import org.async.mysql.facade.SilentQuery;
 import org.async.mysql.facade.Statement;
 import org.async.mysql.facade.SuccessCallback;
 import org.async.mysql.facade.impl.AbstractResultSet;
@@ -85,18 +85,24 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	}
 
-//	public void sendLongData(int statementId, int paramNum, int type,
-//			Object data) throws SQLException {
-//		//TODO  calculate size and stream packet sending
-//		out.put((byte) MysqlDefs.COM_STMT_SEND_LONG_DATA);
-//		Utils.writeLong(out, statementId, 4);
-//		Utils.writeLong(out, paramNum - 1, 2);
-//		Utils.writeLong(out, type, 2);
-//		Utils.write(out, type, data);
-//		send(0);
-//	}
+	// public void sendLongData(int statementId, int paramNum, int type,
+	// Object data) throws SQLException {
+	// //TODO calculate size and stream packet sending
+	// out.put((byte) MysqlDefs.COM_STMT_SEND_LONG_DATA);
+	// Utils.writeLong(out, statementId, 4);
+	// Utils.writeLong(out, paramNum - 1, 2);
+	// Utils.writeLong(out, type, 2);
+	// Utils.write(out, type, data);
+	// send(0);
+	// }
 
-	public void execute(int statementId, int[] types, Object[] params)
+	public void executeQuery(int statementId, int[] types, Object[] params)
+			throws SQLException {
+		execute(statementId, types, params);
+		parser.getWaitFor().add(Protocol.RESULT_SET_PACKET_BINARY);
+	}
+
+	private void execute(int statementId, int[] types, Object[] params)
 			throws SQLException {
 		// TODO calculate size and stream packet sending
 		out.put((byte) MysqlDefs.COM_STMT_EXECUTE);
@@ -122,14 +128,20 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		}
 		System.arraycopy(nullBitsBuffer, 0, out.array(), p,
 				nullBitsBuffer.length);
-		parser.getWaitFor().add(Protocol.RESULT_SET_PACKET_BINARY);
 		send(0);
+	}
+
+	@Override
+	public void executeUpdate(int statementId, int[] types, Object[] data)
+			throws SQLException {
+		execute(statementId, types, data);
+		parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
 	}
 
 	public void close(int statementId) throws SQLException {
 		out.put((byte) MysqlDefs.COM_STMT_CLOSE);
 		Utils.writeLong(out, statementId, 4);
-		//parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
+		// parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
 		send(0);
 
 	}
@@ -160,6 +172,15 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		out.put(sql.getBytes());
 		send(0);
 		parser.getWaitFor().add(Protocol.RESULT_SET_PACKET);
+
+	}
+
+	@Override
+	public void update(String sql) throws SQLException {
+		out.put((byte) MysqlDefs.COM_QUERY);
+		out.put(sql.getBytes());
+		send(0);
+		parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
 
 	}
 
@@ -229,8 +250,6 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				while (in.remaining() > 0) {
 					Packet result = parser.parse(in);
 					if (result != null) {
-
-						//System.out.println(result);
 						if (result instanceof EOF) {
 							if (((HasState) parser.getMessage()).isOver()) {
 								if (parser.getMessage() instanceof AbstractResultSet) {
@@ -241,7 +260,8 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 										((ResultSetCallback) callback)
 												.onResultSet(rs);
 									}
-								} 							}
+								}
+							}
 							if (!queries.isEmpty())
 								key.interestOps(SelectionKey.OP_WRITE);
 						} else if (result instanceof OK) {
@@ -289,7 +309,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		try {
 			Query q = queries.remove(0);
 			q.query(this);
-			key.interestOps(SelectionKey.OP_READ);
+			if(!(q instanceof SilentQuery)||queries.isEmpty()) {
+				key.interestOps(SelectionKey.OP_READ);
+			}
 		} catch (SQLException e) {
 			Callback callback = callbacks.remove(0);
 			if (callback != null) {
@@ -304,6 +326,15 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			key.interestOps(SelectionKey.OP_WRITE);
 		}
 		callbacks.add(callback);
+
+	}
+
+	public void query(SilentQuery q) {
+		queries.add(q);
+		if (ready && callbacks.size() == 0) {
+			key.interestOps(SelectionKey.OP_WRITE);
+		}
+
 
 	}
 

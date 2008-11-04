@@ -50,8 +50,11 @@ public class PSOK implements Packet {
 		for(int i=0;i<columns;i++) {
 			parser.getWaitFor().add(parameters+i+1,Protocol.FIELD_PACKET);
 		}
-		parser.getWaitFor().add(parameters+columns+1,Protocol.ROW_DATA_BINARY);
 		PreparedStatementImpl pstmt=(PreparedStatementImpl)parser.getMessage();
+		if(columns>0) {
+			pstmt.nextState();
+			parser.getWaitFor().add(parameters+columns+1,Protocol.ROW_DATA_BINARY);
+		}
 		pstmt.init(statementId, columns, parameters);
 	}
 }

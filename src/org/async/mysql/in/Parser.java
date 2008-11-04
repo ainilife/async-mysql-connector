@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.async.mysql.Utils;
 import org.async.mysql.facade.Callback;
 
 public class Parser {

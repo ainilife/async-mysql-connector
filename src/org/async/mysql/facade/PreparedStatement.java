@@ -6,7 +6,9 @@ import java.sql.Time;
 import java.sql.Timestamp;
 
 public interface PreparedStatement {
-	void execute(PreparedQuery query,ResultSetCallback callback) throws SQLException;
+	void executeQuery(PreparedQuery query,ResultSetCallback callback) throws SQLException;
+
+	void executeUpdate(PreparedQuery query,SuccessCallback callback) throws SQLException;
 
 	void setByte(int idx, Byte b);
 

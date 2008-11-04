@@ -1,5 +1,8 @@
 package org.async.mysql.facade.impl;
 
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
@@ -38,14 +41,14 @@ public class StringResultSet extends AbstractResultSet<String[]> {
 					break;
 
 				case MysqlDefs.FIELD_TYPE_TIME:
-					unpackedRow[i] = timeFormat.parse(s);
+					unpackedRow[i] = new Time(timeFormat.parse(s).getTime());
 					break;
 				case MysqlDefs.FIELD_TYPE_DATE:
-					unpackedRow[i] = dateFormat.parse(s);
+					unpackedRow[i] = new Date(dateFormat.parse(s).getTime());
 					break;
 				case MysqlDefs.FIELD_TYPE_DATETIME:
 				case MysqlDefs.FIELD_TYPE_TIMESTAMP:
-					unpackedRow[i] = datetimeFormat.parse(s);
+					unpackedRow[i] = new Timestamp(datetimeFormat.parse(s).getTime());
 					break;
 				// case MysqlDefs.FIELD_TYPE_DECIMAL:
 				// case MysqlDefs.FIELD_TYPE_NEW_DECIMAL:

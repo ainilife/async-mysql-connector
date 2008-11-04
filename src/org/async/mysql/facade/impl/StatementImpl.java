@@ -34,7 +34,7 @@ public class StatementImpl implements Statement {
 		connection.query(new Query() {
 
 			public void query(InnerConnection connection) throws SQLException {
-				connection.query(sql);
+				connection.update(sql);
 
 			}
 

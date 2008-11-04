@@ -4,9 +4,8 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.util.LinkedList;
-import java.util.List;
 
+import org.async.mysql.MysqlConnection;
 import org.async.mysql.MysqlDefs;
 import org.async.mysql.facade.Callback;
 import org.async.mysql.facade.HasState;
@@ -15,10 +14,10 @@ import org.async.mysql.facade.PreparedQuery;
 import org.async.mysql.facade.PreparedStatement;
 import org.async.mysql.facade.Query;
 import org.async.mysql.facade.ResultSetCallback;
+import org.async.mysql.facade.SilentQuery;
 import org.async.mysql.facade.SuccessCallback;
 import org.async.mysql.in.packets.Field;
 import org.async.mysql.in.packets.OK;
-import org.async.mysql.out.MysqlConnection;
 
 public class PreparedStatementImpl implements Query, PreparedStatement,
 		HasState, SuccessCallback {
@@ -31,8 +30,6 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 	private Object[] data;
 	private int statementId;
 	private InnerConnection connection;
-	private List<Object> queries = new LinkedList<Object>();
-	private List<Callback> callbacks = new LinkedList<Callback>();
 	private String sql;
 	private int state = 0;
 	private boolean closed;
@@ -46,15 +43,21 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 
 	}
 
-	public void execute(final PreparedQuery query, ResultSetCallback callback)
+	public void executeQuery(final PreparedQuery query,
+			ResultSetCallback callback) throws SQLException {
+		if (isClosed())
+			throw new SQLException(
+					" No operations allowed after statement closed.");
+		executeInternal(query, callback);
+	}
+
+	@Override
+	public void executeUpdate(PreparedQuery query, SuccessCallback callback)
 			throws SQLException {
-		if(isClosed()) throw new SQLException(" No operations allowed after statement closed.");
-		if (statementId == 0) {
-			queries.add(query);
-			callbacks.add(callback);
-		} else {
-			executeInternal(query, callback);
-		}
+		if (isClosed())
+			throw new SQLException(
+					" No operations allowed after statement closed.");
+		executeInternal(query, callback);
 	}
 
 	private boolean isClosed() {
@@ -62,18 +65,13 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 	}
 
 	public void close() throws SQLException {
-		closed=true;
-		Query query = new Query() {
+		closed = true;
+		SilentQuery query = new SilentQuery() {
 			public void query(InnerConnection connection) throws SQLException {
 				connection.close(statementId);
 			}
 		};
-		if (statementId == 0) {
-			queries.add(query);
-			callbacks.add(this);
-		} else {
-			connection.query(query, this);
-		}
+		connection.query(query);
 
 	}
 
@@ -82,7 +80,10 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 		connection.query(new Query() {
 			public void query(InnerConnection connection) throws SQLException {
 				query.query(PreparedStatementImpl.this);
-				connection.execute(statementId, types, data);
+				if (fields.length == 0)
+					connection.executeUpdate(statementId, types, data);
+				else
+					connection.executeQuery(statementId, types, data);
 
 			}
 
@@ -204,20 +205,6 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 		this.params = new Field[params];
 		this.types = new int[params];
 		this.data = new Object[params];
-		while (!queries.isEmpty()) {
-			try {
-				Object query = queries.remove(0);
-				Callback callback = callbacks.remove(0);
-				if (query instanceof PreparedQuery) {
-					executeInternal((PreparedQuery) query, callback);
-				} else {
-					connection.query((Query) query, callback);
-
-				}
-			} catch (Exception e) {
-
-			}
-		}
 	}
 
 	public int getState() {
@@ -237,7 +224,6 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 	}
 
 	public void onSuccess(OK ok) {
-		System.out.println("SC");
 	}
 
 	public void onError(SQLException e) {
