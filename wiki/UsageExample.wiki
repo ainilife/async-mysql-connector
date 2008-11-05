@@ -1,5 +1,5 @@
 #summary Async MySQL Connector usage example
-#labels MySQL,Asynchronous,Example
+#labels MySQL,Asynchronous,Example,Featured
 
 {{{
 import java.io.IOException;
