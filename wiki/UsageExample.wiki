@@ -101,7 +101,7 @@ public class Test {
 		ps.close();
 		connection.close();
 		while (true) {
-			mpx.select(); //mpx.select(milliseconds) can be used if you use another events handling cycle
+			mpx.select(); //mpx.select(milliseconds) can be used if you has another events handling cycle
 		}
 	}
 }
