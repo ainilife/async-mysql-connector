@@ -1,4 +1,4 @@
-package org.async.mysql.jdbc.impl;
+package org.async.mysql.jdbc;
 
 import java.sql.Date;
 import java.sql.SQLException;
@@ -7,15 +7,15 @@ import java.sql.Timestamp;
 
 import org.async.jdbc.Callback;
 import org.async.jdbc.Connection;
-import org.async.jdbc.HasState;
 import org.async.jdbc.PreparedQuery;
 import org.async.jdbc.PreparedStatement;
 import org.async.jdbc.Query;
 import org.async.jdbc.ResultSetCallback;
-import org.async.jdbc.SilentQuery;
 import org.async.jdbc.SuccessCallback;
 import org.async.mysql.MysqlConnection;
 import org.async.mysql.MysqlDefs;
+import org.async.mysql.SilentQuery;
+import org.async.mysql.protocol.HasState;
 import org.async.mysql.protocol.packets.Field;
 import org.async.mysql.protocol.packets.OK;
 

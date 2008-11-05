@@ -2,7 +2,7 @@ package org.async.mysql.protocol.packets;
 
 import java.util.Arrays;
 
-import org.async.mysql.jdbc.impl.StringResultSet;
+import org.async.mysql.jdbc.StringResultSet;
 import org.async.mysql.protocol.Packet;
 import org.async.mysql.protocol.Parser;
 import org.async.mysql.protocol.Protocol;

@@ -1,8 +1,8 @@
 package org.async.mysql.protocol.packets;
 
-import org.async.mysql.jdbc.impl.AbstractResultSet;
-import org.async.mysql.jdbc.impl.BinaryResultSet;
-import org.async.mysql.jdbc.impl.StringResultSet;
+import org.async.mysql.jdbc.AbstractResultSet;
+import org.async.mysql.jdbc.BinaryResultSet;
+import org.async.mysql.jdbc.StringResultSet;
 import org.async.mysql.protocol.Packet;
 import org.async.mysql.protocol.Parser;
 import org.async.mysql.protocol.Protocol;

@@ -1,4 +1,4 @@
-package org.async.mysql.jdbc.impl;
+package org.async.mysql.jdbc;
 
 import java.sql.Time;
 import java.sql.Timestamp;

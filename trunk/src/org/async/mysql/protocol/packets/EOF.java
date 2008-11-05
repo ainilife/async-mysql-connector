@@ -1,6 +1,6 @@
 package org.async.mysql.protocol.packets;
 
-import org.async.jdbc.HasState;
+import org.async.mysql.protocol.HasState;
 import org.async.mysql.protocol.Packet;
 import org.async.mysql.protocol.Parser;
 

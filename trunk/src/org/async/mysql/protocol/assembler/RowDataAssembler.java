@@ -2,7 +2,7 @@ package org.async.mysql.protocol.assembler;
 
 import java.nio.ByteBuffer;
 
-import org.async.mysql.jdbc.impl.AbstractResultSet;
+import org.async.mysql.jdbc.AbstractResultSet;
 import org.async.mysql.protocol.PacketAssembler;
 import org.async.mysql.protocol.packets.RowData;
 
