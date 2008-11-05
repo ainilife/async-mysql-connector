@@ -1,7 +1,7 @@
 package org.async.mysql.protocol;
 
 import org.async.mysql.MysqlDefs;
-import org.async.mysql.jdbc.impl.AbstractResultSet;
+import org.async.mysql.jdbc.AbstractResultSet;
 import org.async.mysql.protocol.packets.Field;
 
 public class BinaryPacketMap<T extends Packet> extends PacketMap<T> {

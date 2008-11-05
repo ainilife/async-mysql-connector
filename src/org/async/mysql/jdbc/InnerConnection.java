@@ -1,4 +1,4 @@
-package org.async.mysql.jdbc.impl;
+package org.async.mysql.jdbc;
 
 
 import java.sql.SQLException;
@@ -6,7 +6,7 @@ import java.sql.SQLException;
 import org.async.jdbc.Callback;
 import org.async.jdbc.Connection;
 import org.async.jdbc.Query;
-import org.async.jdbc.SilentQuery;
+import org.async.mysql.SilentQuery;
 
 public interface InnerConnection extends Connection {
 	void query(Query query, Callback callback) throws SQLException;

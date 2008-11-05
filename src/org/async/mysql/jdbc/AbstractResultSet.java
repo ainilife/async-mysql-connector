@@ -1,4 +1,4 @@
-package org.async.mysql.jdbc.impl;
+package org.async.mysql.jdbc;
 
 import java.sql.Date;
 import java.sql.Time;
@@ -7,8 +7,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.async.jdbc.HasState;
 import org.async.jdbc.ResultSet;
+import org.async.mysql.protocol.HasState;
 import org.async.mysql.protocol.packets.Field;
 
 public abstract class AbstractResultSet<T> implements ResultSet, HasState {
