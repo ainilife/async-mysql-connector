@@ -23,15 +23,9 @@ import org.async.net.Multiplexer;
 public class Test {
 
 	public static void main(String[] args) throws IOException, SQLException {
-		SocketChannel channel = SocketChannel.open();
-		channel.configureBlocking(false);
-		channel.connect(new InetSocketAddress("localhost", 3306));
 		Multiplexer mpx = new Multiplexer();
-		SelectionKey k = channel.register(mpx.getSelector(),
-				SelectionKey.OP_CONNECT);
-		AsyncConnection connection = new MysqlConnection(k, "root", "",
-				"");
-		k.attach(connection);
+		AsyncConnection connection = new MysqlConnection("localhost",3306, "root", "",
+				"",mpx.getSelector());
 		Statement st = connection.createStatement();
 		SuccessCallback successCallback = new SuccessCallback() {
 
