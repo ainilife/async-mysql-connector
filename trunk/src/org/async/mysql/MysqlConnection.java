@@ -1,8 +1,11 @@
 package org.async.mysql;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -32,6 +35,7 @@ import org.async.mysql.protocol.packets.Handshake;
 import org.async.mysql.protocol.packets.OK;
 import org.async.mysql.protocol.packets.PSOK;
 import org.async.net.ChannelProcessor;
+import org.async.net.Multiplexer;
 
 public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		InnerConnection {
@@ -48,6 +52,21 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	private SelectionKey key;
 	private boolean ready = false;
 	private boolean closed = false;
+
+	public MysqlConnection(String host, int port, String user, String password,
+			String database, Selector selector) throws IOException {
+		super();
+		channel = SocketChannel.open();
+		channel.configureBlocking(false);
+		channel.connect(new InetSocketAddress("localhost", 3306));
+		key = channel.register(selector, SelectionKey.OP_CONNECT);
+		key.attach(this);
+		this.user = user;
+		this.password = password;
+		this.database = database;
+		out.position(4);
+
+	}
 
 	public MysqlConnection(SelectionKey key, String user, String password,
 			String database) {
@@ -73,9 +92,8 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		Utils.filler(out, 23);
 		Utils.nullTerminated(out, user);
 		if (password.length() != 0) {
-			Utils
-					.lengthEncodedString(out, scramble411(password, handshake
-							.getSeed()));
+			Utils.lengthEncodedString(out, scramble411(password, handshake
+					.getSeed()));
 		} else {
 			Utils.filler(out, 1);
 		}
@@ -152,7 +170,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				out.put((byte) MysqlDefs.COM_QUIT);
 				send(0);
 				close(key);
-				key=null;
+				key = null;
 			}
 
 		});
@@ -329,7 +347,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			Query q = queries.remove(0);
 			q.query(this);
 			if (!(q instanceof SilentQuery) || queries.isEmpty()) {
-				if (this.key!=null)
+				if (this.key != null)
 					key.interestOps(SelectionKey.OP_READ);
 			}
 		} catch (SQLException e) {
@@ -357,7 +375,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			throw new SQLException(
 					" No operations allowed after connection closed.");
 		queries.add(q);
-		if (ready && callbacks.isEmpty()&&queries.isEmpty()) {
+		if (ready && callbacks.isEmpty() && queries.isEmpty()) {
 			key.interestOps(SelectionKey.OP_WRITE);
 		}
 

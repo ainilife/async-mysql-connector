@@ -51,6 +51,7 @@ public class StringResultSet extends AbstractResultSet<String[]> {
 						break;
 					case MysqlDefs.FIELD_TYPE_DATETIME:
 					case MysqlDefs.FIELD_TYPE_TIMESTAMP:
+						//TODO nanoseconds
 						unpackedRow[i] = new Timestamp(datetimeFormat.parse(s)
 								.getTime());
 						break;
