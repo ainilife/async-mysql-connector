@@ -3,7 +3,6 @@ package org.async.mysql;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -35,7 +34,6 @@ import org.async.mysql.protocol.packets.Handshake;
 import org.async.mysql.protocol.packets.OK;
 import org.async.mysql.protocol.packets.PSOK;
 import org.async.net.ChannelProcessor;
-import org.async.net.Multiplexer;
 
 public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		InnerConnection {
@@ -50,11 +48,13 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	private String password;
 	private String database;
 	private SelectionKey key;
-	private boolean ready = false;
 	private boolean closed = false;
 
+	// TODO on connect callback
+
 	public MysqlConnection(String host, int port, String user, String password,
-			String database, Selector selector) throws IOException {
+			String database, Selector selector, SuccessCallback onConnect)
+			throws IOException {
 		super();
 		channel = SocketChannel.open();
 		channel.configureBlocking(false);
@@ -64,18 +64,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		this.user = user;
 		this.password = password;
 		this.database = database;
-		out.position(4);
-
-	}
-
-	public MysqlConnection(SelectionKey key, String user, String password,
-			String database) {
-		super();
-		this.channel = (SocketChannel) key.channel();
-		this.key = key;
-		this.user = user;
-		this.password = password;
-		this.database = database;
+		callbacks.add(onConnect);
 		out.position(4);
 
 	}
@@ -101,7 +90,6 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		Utils.nullTerminated(out, database);
 		send(1);
 		parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
-
 	}
 
 	// public void sendLongData(int statementId, int paramNum, int type,
@@ -302,14 +290,10 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 							if (!queries.isEmpty())
 								key.interestOps(SelectionKey.OP_WRITE);
 						} else if (result instanceof OK) {
-							if (!ready) {
-								ready = true;
-							} else {
-								Callback callback = callbacks.remove(0);
-								if (callback != null) {
-									((SuccessCallback) callback)
-											.onSuccess((OK) result);
-								}
+							Callback callback = callbacks.remove(0);
+							if (callback != null) {
+								((SuccessCallback) callback)
+										.onSuccess((OK) result);
 							}
 							if (!queries.isEmpty())
 								key.interestOps(SelectionKey.OP_WRITE);
@@ -363,7 +347,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			throw new SQLException(
 					" No operations allowed after connection closed.");
 		queries.add(q);
-		if (ready && callbacks.size() == 0) {
+		if (callbacks.isEmpty()) {
 			key.interestOps(SelectionKey.OP_WRITE);
 		}
 		callbacks.add(callback);
@@ -375,7 +359,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			throw new SQLException(
 					" No operations allowed after connection closed.");
 		queries.add(q);
-		if (ready && callbacks.isEmpty() && queries.isEmpty()) {
+		if (callbacks.isEmpty() && queries.isEmpty()) {
 			key.interestOps(SelectionKey.OP_WRITE);
 		}
 

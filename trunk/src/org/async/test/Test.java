@@ -18,24 +18,24 @@ import org.async.net.Multiplexer;
 public class Test {
 
 	public static void main(String[] args) throws IOException, SQLException {
-		Multiplexer mpx = new Multiplexer();
-		AsyncConnection connection = new MysqlConnection("localhost",3306, "root", "",
-				"",mpx.getSelector());
-		Statement st = connection.createStatement();
 		SuccessCallback successCallback = new SuccessCallback() {
-
+			
 			@Override
 			public void onSuccess(OK ok) {
 				System.out.println("OK");
 			}
-
+			
 			@Override
 			public void onError(SQLException e) {
 				e.printStackTrace();
-
+				
 			}
-
+			
 		};
+		Multiplexer mpx = new Multiplexer();
+		AsyncConnection connection = new MysqlConnection("localhost",3306, "root", "",
+				"",mpx.getSelector(),successCallback);
+		Statement st = connection.createStatement();
 		st
 				.executeUpdate(
 						"CREATE DATABASE IF NOT EXISTS async_mysql_test collate utf8_general_ci",
