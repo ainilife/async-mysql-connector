@@ -58,7 +58,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		super();
 		channel = SocketChannel.open();
 		channel.configureBlocking(false);
-		channel.connect(new InetSocketAddress("localhost", 3306));
+		channel.connect(new InetSocketAddress(host, port));
 		key = channel.register(selector, SelectionKey.OP_CONNECT);
 		key.attach(this);
 		this.user = user;
