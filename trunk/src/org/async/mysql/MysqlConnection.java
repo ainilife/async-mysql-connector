@@ -267,9 +267,8 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	public void read(SelectionKey key) {
 		SocketChannel channel = (SocketChannel) key.channel();
 		try {
-			in.clear();
-			int read = channel.read(in);
-			if (read > -1) {
+			int read = -1;
+			while ((read = channel.read(in)) > 0) {
 				in.limit(read);
 				in.position(0);
 				while (in.remaining() > 0) {
@@ -286,9 +285,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 												.onResultSet(rs);
 									}
 								}
+								if (!queries.isEmpty())
+									key.interestOps(SelectionKey.OP_WRITE);
 							}
-							if (!queries.isEmpty())
-								key.interestOps(SelectionKey.OP_WRITE);
 						} else if (result instanceof OK) {
 							Callback callback = callbacks.remove(0);
 							if (callback != null) {
@@ -318,7 +317,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 					}
 				}
-			} else {
+				in.clear();
+			}
+			if (read == -1) {
 				close(key);
 			}
 		} catch (Exception e) {
