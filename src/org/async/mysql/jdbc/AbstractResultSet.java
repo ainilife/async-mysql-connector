@@ -59,47 +59,47 @@ public abstract class AbstractResultSet<T> implements ResultSet, HasState {
 	}
 
 	public Byte getByte(int idx) {
-		return ((Number) unpackedRow[idx-1]).byteValue();
+		return ((Number) unpackedRow[idx - 1]).byteValue();
 	}
 
 	public Short getShort(int idx) {
-		return ((Number) unpackedRow[idx-1]).shortValue();
+		return ((Number) unpackedRow[idx - 1]).shortValue();
 	}
 
 	public Integer getInteger(int idx) {
-		return ((Number) unpackedRow[idx-1]).intValue();
+		return ((Number) unpackedRow[idx - 1]).intValue();
 	}
 
 	public Long getLong(int idx) {
-		return ((Number) unpackedRow[idx-1]).longValue();
+		return ((Number) unpackedRow[idx - 1]).longValue();
 	}
 
 	public Float getFloat(int idx) {
-		return ((Number) unpackedRow[idx-1]).floatValue();
+		return ((Number) unpackedRow[idx - 1]).floatValue();
 	}
 
 	public Double getDouble(int idx) {
-		return ((Number) unpackedRow[idx-1]).doubleValue();
+		return ((Number) unpackedRow[idx - 1]).doubleValue();
 	}
 
 	public Time getTime(int idx) {
-		return (Time) unpackedRow[idx-1];
+		return (Time) unpackedRow[idx - 1];
 	}
 
 	public Date getDate(int idx) {
-		return (Date) unpackedRow[idx-1];
+		return (Date) unpackedRow[idx - 1];
 	}
 
 	public Timestamp getTimestamp(int idx) {
-		return (Timestamp) unpackedRow[idx-1];
+		return (Timestamp) unpackedRow[idx - 1];
 	}
 
 	public String getString(int idx) {
-		return (String) unpackedRow[idx-1];
+		return (String) unpackedRow[idx - 1];
 	}
 
 	public byte[] getBytes(int idx) {
-		return (byte[]) unpackedRow[idx-1];
+		return (byte[]) unpackedRow[idx - 1];
 	}
 
 	public int getState() {
@@ -115,7 +115,10 @@ public abstract class AbstractResultSet<T> implements ResultSet, HasState {
 	}
 
 	public boolean isOver() {
-		return state==OVER;
+		return state == OVER;
 	}
 
+	public int numRows() {
+		return data.size();
+	}
 }
