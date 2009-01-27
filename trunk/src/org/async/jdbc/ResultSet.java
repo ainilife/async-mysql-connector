@@ -30,5 +30,27 @@ public interface ResultSet {
 	boolean hasNext();
 
 	void next();
+	
+	Byte getByte(String name);
+
+	Short getShort(String name);
+
+	Integer getInteger(String name);
+
+	Long getLong(String name);
+
+	Float getFloat(String name);
+
+	Double getDouble(String name);
+
+	Time getTime(String name);
+
+	Date getDate(String name);
+
+	Timestamp getTimestamp(String name);
+
+	String getString(String name);
+
+	byte[] getBytes(String name);
 
 }
