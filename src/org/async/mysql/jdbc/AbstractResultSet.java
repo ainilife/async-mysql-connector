@@ -3,6 +3,7 @@ package org.async.mysql.jdbc;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -125,10 +126,10 @@ public abstract class AbstractResultSet<T> implements ResultSet, HasState {
 	private int getIdx(String name) {
 		int i=0;
 		for(Field f:fields) {
-			if(f.getName().equals(name)) return i;
+			if(f.getName().equals(name)) return i+1;
 			i++;
 		}
-		return -1;
+		return 0;
 		
 	}
 	public Byte getByte(String name) {
