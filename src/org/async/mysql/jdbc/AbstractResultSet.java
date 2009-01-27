@@ -121,4 +121,57 @@ public abstract class AbstractResultSet<T> implements ResultSet, HasState {
 	public int numRows() {
 		return data.size();
 	}
+	
+	private int getIdx(String name) {
+		int i=0;
+		for(Field f:fields) {
+			if(f.getName().equals(name)) return i;
+			i++;
+		}
+		return -1;
+		
+	}
+	public Byte getByte(String name) {
+		return getByte(getIdx(name));
+	}
+
+	public Short getShort(String name) {
+		return getShort(getIdx(name));
+	}
+
+	public Integer getInteger(String name) {
+		return getInteger(getIdx(name));
+	}
+
+	public Long getLong(String name) {
+		return getLong(getIdx(name));
+	}
+
+	public Float getFloat(String name) {
+		return getFloat(getIdx(name));
+	}
+
+	public Double getDouble(String name) {
+		return getDouble(getIdx(name));
+	}
+
+	public Time getTime(String name) {
+		return getTime(getIdx(name));
+	}
+
+	public Date getDate(String name) {
+		return getDate(getIdx(name));
+	}
+
+	public Timestamp getTimestamp(String name) {
+		return getTimestamp(getIdx(name));
+	}
+
+	public String getString(String name) {
+		return getString(getIdx(name));
+	}
+
+	public byte[] getBytes(String name) {
+		return getBytes(getIdx(name));
+	}
 }
