@@ -150,5 +150,7 @@ public class Field implements Packet {
 		return catalog + " " + db + " " + table + " " + orgTable + " " + name
 				+ " " + orgName + " type=" + type;
 	}
+	
+
 
 }
