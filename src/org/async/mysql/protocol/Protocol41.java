@@ -84,7 +84,7 @@ public class Protocol41 extends Protocol {
 		} else if(type==SUCCESS_PACKET) {
 				return  getDataPacket(firstByte,(PacketMap) OK_PACKET);
 		} else if (type == PSOK_PACKET) {
-			return (PacketMap) PS_OK_PACKET;
+			return getDataPacket(firstByte,(PacketMap) PS_OK_PACKET);
 		} else if (type == PS_PARAM_PACKET) {
 			return (PacketMap) PARAM_PACKET;
 		} else if (type == HAND_SHAKE) {
