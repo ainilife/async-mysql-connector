@@ -86,7 +86,7 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 					ic.executeUpdate(statementId, types, data);
 				else
 					ic.executeQuery(statementId, types, data);
-
+			
 			}
 
 		}, callback);
@@ -231,6 +231,21 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 
 	public void onError(SQLException e) {
 		e.printStackTrace();
+
+	}
+
+	@Override
+	public void reset() throws SQLException {
+		if (isClosed())
+			throw new SQLException(
+					" No operations allowed after statement closed.");
+		Query query = new Query() {
+			public void query(Connection connection) throws SQLException {
+				InnerConnection ic=(InnerConnection)connection;
+				ic.reset(statementId);
+			}
+		};
+		connection.query(query,this);
 
 	}
 }

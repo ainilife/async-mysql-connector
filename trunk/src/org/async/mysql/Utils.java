@@ -54,7 +54,7 @@ public class Utils {
 				} else if(data.length>0xFFFF) {
 					out.put((byte)(253));
 					Utils.writeLong(out,data.length, 3);
-				} else if(data.length>0xFF) {
+				} else  {
 					out.put((byte)(252));
 					Utils.writeLong(out,data.length, 2);
 				}

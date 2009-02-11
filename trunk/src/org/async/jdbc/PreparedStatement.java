@@ -33,5 +33,7 @@ public interface PreparedStatement {
 	void setBytes(int idx, byte[] bytes);
 
 	void close() throws SQLException;
+	
+	void reset() throws SQLException;
 
 }

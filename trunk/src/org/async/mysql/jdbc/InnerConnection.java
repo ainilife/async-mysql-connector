@@ -22,4 +22,6 @@ public interface InnerConnection extends Connection {
 	void prepare(String sql) throws SQLException;
 
 	void close(int statementId) throws SQLException;
+
+	void reset(int statementId) throws SQLException;
 }
