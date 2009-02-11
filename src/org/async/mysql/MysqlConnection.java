@@ -386,4 +386,14 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		return closed;
 	}
 
+	@Override
+	public void reset(int statementId) throws SQLException {
+		out.put((byte) MysqlDefs.COM_STMT_RESET);
+		Utils.writeLong(out, statementId, 4);
+		//parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
+		parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
+		send(0);
+		
+	}
+
 }
