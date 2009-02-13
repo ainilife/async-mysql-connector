@@ -59,27 +59,27 @@ public abstract class AbstractResultSet<T> implements ResultSet, HasState {
 	}
 
 	public Byte getByte(int idx) {
-		return ((Number) unpackedRow[idx - 1]).byteValue();
+		return unpackedRow[idx - 1]==null?null:((Number) unpackedRow[idx - 1]).byteValue();
 	}
 
 	public Short getShort(int idx) {
-		return ((Number) unpackedRow[idx - 1]).shortValue();
+		return unpackedRow[idx - 1]==null?null:((Number) unpackedRow[idx - 1]).shortValue();
 	}
 
 	public Integer getInteger(int idx) {
-		return ((Number) unpackedRow[idx - 1]).intValue();
+		return unpackedRow[idx - 1]==null?null:((Number) unpackedRow[idx - 1]).intValue();
 	}
 
 	public Long getLong(int idx) {
-		return ((Number) unpackedRow[idx - 1]).longValue();
+		return unpackedRow[idx - 1]==null?null:((Number) unpackedRow[idx - 1]).longValue();
 	}
 
 	public Float getFloat(int idx) {
-		return ((Number) unpackedRow[idx - 1]).floatValue();
+		return unpackedRow[idx - 1]==null?null:((Number) unpackedRow[idx - 1]).floatValue();
 	}
 
 	public Double getDouble(int idx) {
-		return ((Number) unpackedRow[idx - 1]).doubleValue();
+		return unpackedRow[idx - 1]==null?null:((Number) unpackedRow[idx - 1]).doubleValue();
 	}
 
 	public Time getTime(int idx) {
