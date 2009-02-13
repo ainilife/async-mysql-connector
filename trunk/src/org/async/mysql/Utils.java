@@ -12,10 +12,12 @@ public class Utils {
 	public static long readLong(byte[] ar, int offset,int length) {
 		long rs = 0;
 		for (int i = 0; i < length; i++) {
-			rs += (ar[offset+i] & 0xFF) << (i * 8);
+			rs += (long)(ar[offset+i] & 0xFF) << (i * 8);
 		}
 		return rs;
 	}
+	
+	
 
 	private static Calendar calendar = Calendar.getInstance();
 
