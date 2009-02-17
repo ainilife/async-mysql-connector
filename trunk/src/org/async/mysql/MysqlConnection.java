@@ -395,5 +395,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		send(0);
 		
 	}
+	
+	public int load() {
+		return Math.max(queries.size(),callbacks.size());
+	}
 
 }

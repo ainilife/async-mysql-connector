@@ -8,4 +8,6 @@ public interface AsyncConnection {
 	PreparedStatement prepareStatement(String sql) throws SQLException;
 
 	void close() throws SQLException;
+	
+	int load();
 }
