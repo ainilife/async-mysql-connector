@@ -33,6 +33,7 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 	private String sql;
 	private int state = 0;
 	private boolean closed;
+	private boolean initialized;
 
 	public PreparedStatementImpl(String sql, InnerConnection connection)
 			throws SQLException {
@@ -48,7 +49,9 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 		if (isClosed())
 			throw new SQLException(
 					" No operations allowed after statement closed.");
-		executeInternal(query, callback);
+		if (initialized) {
+			executeInternal(query, callback);
+		}
 	}
 
 	@Override
@@ -57,7 +60,9 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 		if (isClosed())
 			throw new SQLException(
 					" No operations allowed after statement closed.");
-		executeInternal(query, callback);
+		if (initialized) {
+			executeInternal(query, callback);
+		}
 	}
 
 	private boolean isClosed() {
@@ -66,13 +71,15 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 
 	public void close() throws SQLException {
 		closed = true;
-		SilentQuery query = new SilentQuery() {
-			public void query(Connection connection) throws SQLException {
-				InnerConnection ic=(InnerConnection)connection;
-				ic.close(statementId);
-			}
-		};
-		connection.query(query);
+		if (initialized) {
+			SilentQuery query = new SilentQuery() {
+				public void query(Connection connection) throws SQLException {
+					InnerConnection ic = (InnerConnection) connection;
+					ic.close(statementId);
+				}
+			};
+			connection.query(query);
+		}
 
 	}
 
@@ -80,20 +87,20 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 			throws SQLException {
 		connection.query(new Query() {
 			public void query(Connection connection) throws SQLException {
-				InnerConnection ic=(InnerConnection)connection;
+				InnerConnection ic = (InnerConnection) connection;
 				query.query(PreparedStatementImpl.this);
 				if (fields.length == 0)
 					ic.executeUpdate(statementId, types, data);
 				else
 					ic.executeQuery(statementId, types, data);
-			
+
 			}
 
 		}, callback);
 	}
 
 	public void query(Connection connection) throws SQLException {
-		InnerConnection ic=(InnerConnection)connection;
+		InnerConnection ic = (InnerConnection) connection;
 		ic.prepare(sql);
 		((MysqlConnection) connection).getParser().setMessage(this);
 	}
@@ -208,6 +215,7 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 		this.params = new Field[params];
 		this.types = new int[params];
 		this.data = new Object[params];
+		initialized = true;
 	}
 
 	public int getState() {
@@ -241,11 +249,11 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 					" No operations allowed after statement closed.");
 		Query query = new Query() {
 			public void query(Connection connection) throws SQLException {
-				InnerConnection ic=(InnerConnection)connection;
+				InnerConnection ic = (InnerConnection) connection;
 				ic.reset(statementId);
 			}
 		};
-		connection.query(query,this);
+		connection.query(query, this);
 
 	}
 }
