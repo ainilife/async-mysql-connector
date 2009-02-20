@@ -160,7 +160,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				close(key);
 				key = null;
 			}
-
+		
 		});
 		closed = true;
 	}
@@ -347,10 +347,10 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		if (isClosed())
 			throw new SQLException(
 					" No operations allowed after connection closed.");
-		queries.add(q);
-		if (callbacks.isEmpty()) {
+		if (callbacks.isEmpty() && queries.isEmpty()) {
 			key.interestOps(SelectionKey.OP_WRITE);
 		}
+		queries.add(q);
 		callbacks.add(callback);
 
 	}
@@ -359,10 +359,10 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		if (isClosed())
 			throw new SQLException(
 					" No operations allowed after connection closed.");
-		queries.add(q);
 		if (callbacks.isEmpty() && queries.isEmpty()) {
 			key.interestOps(SelectionKey.OP_WRITE);
 		}
+		queries.add(q);
 
 	}
 
