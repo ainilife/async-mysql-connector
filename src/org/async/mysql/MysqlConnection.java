@@ -419,7 +419,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	@Override
-	public boolean isFree() {
+	public boolean isFree(SelectionKey key) {
 		return load() == 0;
 	}
 
@@ -428,7 +428,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	@Override
-	public void shutdown() {
+	public void shutdown(SelectionKey key) {
 
 	}
 

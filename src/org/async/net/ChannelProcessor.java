@@ -13,8 +13,8 @@ public interface ChannelProcessor {
 
 	void connect(SelectionKey key);
 
-	boolean isFree();
+	boolean isFree(SelectionKey key);
 
-	void shutdown();
+	void shutdown(SelectionKey key);
 
 }
