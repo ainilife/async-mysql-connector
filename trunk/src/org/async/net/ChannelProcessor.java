@@ -15,4 +15,6 @@ public interface ChannelProcessor {
 
 	boolean isFree();
 
+	void shutdown();
+
 }

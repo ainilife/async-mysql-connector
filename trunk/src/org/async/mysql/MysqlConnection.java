@@ -427,4 +427,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		return connected;
 	}
 
+	@Override
+	public void shutdown() {
+
+	}
+
 }
