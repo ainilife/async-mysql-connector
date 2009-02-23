@@ -33,13 +33,14 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 	private String sql;
 	private int state = 0;
 	private boolean closed;
+	private long connected = 0;
 
 	public PreparedStatementImpl(String sql, InnerConnection connection)
 			throws SQLException {
 		super();
 		this.connection = connection;
 		this.sql = sql;
-		connection.query(this, this);
+		prepare();
 
 	}
 
@@ -78,6 +79,7 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 
 	private void executeInternal(final PreparedQuery query, Callback callback)
 			throws SQLException {
+		prepare();
 		connection.query(new Query() {
 			public void query(Connection connection) throws SQLException {
 				InnerConnection ic = (InnerConnection) connection;
@@ -90,6 +92,13 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 			}
 
 		}, callback);
+	}
+
+	private void prepare() throws SQLException {
+		if (connected != connection.getConnected()) {
+			connection.query(this, this);
+			this.connected=connection.getConnected();
+		}
 	}
 
 	public void query(Connection connection) throws SQLException {
@@ -208,6 +217,7 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 		this.params = new Field[params];
 		this.types = new int[params];
 		this.data = new Object[params];
+		connected = connection.getConnected();
 	}
 
 	public int getState() {
