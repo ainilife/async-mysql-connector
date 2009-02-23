@@ -24,4 +24,6 @@ public interface InnerConnection extends Connection {
 	void close(int statementId) throws SQLException;
 
 	void reset(int statementId) throws SQLException;
+
+	long getConnected();
 }

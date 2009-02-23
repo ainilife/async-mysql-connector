@@ -3,6 +3,7 @@ package org.async.mysql;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -44,11 +45,16 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	private Parser parser = new Parser();
 	private List<Query> queries = new LinkedList<Query>();
 	private List<Callback> callbacks = new LinkedList<Callback>();
+	private String host;
+	private int port;
 	private String user;
 	private String password;
 	private String database;
+	private Selector selector;
+	private SuccessCallback onConnect;
 	private SelectionKey key;
 	private boolean closed = false;
+	private long connected=Long.MIN_VALUE;
 
 	// TODO on connect callback
 
@@ -56,17 +62,25 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			String database, Selector selector, SuccessCallback onConnect)
 			throws IOException {
 		super();
+		this.host = host;
+		this.port = port;
+		this.user = user;
+		this.password = password;
+		this.database = database;
+		this.selector = selector;
+		this.onConnect = onConnect;
+		connect();
+
+	}
+
+	private void connect() throws IOException, ClosedChannelException {
 		channel = SocketChannel.open();
 		channel.configureBlocking(false);
 		channel.connect(new InetSocketAddress(host, port));
 		key = channel.register(selector, SelectionKey.OP_CONNECT);
 		key.attach(this);
-		this.user = user;
-		this.password = password;
-		this.database = database;
 		callbacks.add(onConnect);
 		out.position(4);
-
 	}
 
 	public void auth(String user, String password, String database)
@@ -160,7 +174,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				close(key);
 				key = null;
 			}
-		
+
 		});
 		closed = true;
 	}
@@ -311,6 +325,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 								key.interestOps(SelectionKey.OP_WRITE);
 
 						} else if (result instanceof Handshake) {
+							connected = System.currentTimeMillis();
 							this.handshake = (Handshake) result;
 							auth(user, password, database);
 						}
@@ -321,6 +336,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			}
 			if (read == -1) {
 				close(key);
+				// reconnecting
+				connected = 0;
+				connect();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -390,15 +408,23 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	public void reset(int statementId) throws SQLException {
 		out.put((byte) MysqlDefs.COM_STMT_RESET);
 		Utils.writeLong(out, statementId, 4);
-		//parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
+		// parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
 		parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
 		send(0);
-		
-	}
-	
-	public int load() {
-		return Math.max(queries.size(),callbacks.size());
+
 	}
 
+	public int load() {
+		return Math.max(queries.size(), callbacks.size());
+	}
+
+	@Override
+	public boolean isFree() {
+		return load() == 0;
+	}
+
+	public long getConnected() {
+		return connected;
+	}
 
 }
