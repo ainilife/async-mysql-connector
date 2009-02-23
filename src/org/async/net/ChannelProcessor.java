@@ -15,6 +15,6 @@ public interface ChannelProcessor {
 
 	boolean isFree(SelectionKey key);
 
-	void shutdown(SelectionKey key);
+	boolean isService(SelectionKey key);
 
 }
