@@ -91,7 +91,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				| MysqlDefs.CLIENT_PROTOCOL_41
 				| MysqlDefs.CLIENT_SECURE_CONNECTION, 4);
 		Utils.writeLong(out, 65536, 4);
-		Utils.writeLong(out, 8, 1);
+		Utils.writeLong(out, 33, 1);
 		Utils.filler(out, 23);
 		Utils.nullTerminated(out, user);
 		if (password.length() != 0) {
