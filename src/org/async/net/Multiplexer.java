@@ -1,29 +1,14 @@
 package org.async.net;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Iterator;
 import java.util.Set;
 
 public class Multiplexer {
 	protected Selector selector;
-
-	public Multiplexer(String host, int port, ChannelProcessor processor)
-			throws IOException {
-		this();
-		ServerSocketChannel serverChannel = ServerSocketChannel.open();
-		serverChannel.configureBlocking(false);
-		InetSocketAddress isa = new InetSocketAddress(host, port);
-		serverChannel.socket().bind(isa);
-		SelectionKey serverKey = serverChannel.register(selector, serverChannel
-				.validOps());
-		serverKey.attach(processor);
-
-	}
 
 	public Multiplexer() throws IOException {
 		super();
