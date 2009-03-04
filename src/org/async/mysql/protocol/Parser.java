@@ -3,11 +3,14 @@ package org.async.mysql.protocol;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.async.jdbc.Callback;
 import org.async.mysql.Utils;
 
 public class Parser {
+	private Logger logger=Logger.getLogger("org.async.mysql.protocol.Parser");
 	private Protocol protocol = new Protocol41();
 	private List<Integer> waitFor = new LinkedList<Integer>();
 	private int dataIdx = 0;
@@ -37,24 +40,19 @@ public class Parser {
 					itemSize = packetSize < 0 ? 4 : protocol.getPacketMap(
 							waitFor.get(0), firstByte)
 							.getSize(dataIdx, message);
+					if(logger.isLoggable(Level.FINE)) {
+						logger.fine("identifing data size packet map: "+waitFor.get(0)+"-"+firstByte+" dataIdx: "+dataIdx);
+					}
 					if (itemSize != 0 && itemSize != Integer.MAX_VALUE
 							&& itemSize != Integer.MIN_VALUE) {
+						if(logger.isLoggable(Level.FINE)) {
+							logger.fine("fixed size item: "+itemSize);
+						}
 						buffer.limit(itemSize);
 					}
 				}
 				if (itemSize == 0) {
-					for (int i = 0, e = in.remaining(); i < e; i++) {
-						byte b = in.get();
-						packetSize--;
-						if (b != 0) {
-							buffer.put(b);
-						}
-						if (b == 0 || packetSize == 0) {
-							buffer.limit(buffer.position());
-							break;
-						}
-
-					}
+					readNullTerminated(in);
 				} else if (itemSize == Protocol.LENGTH_CODED_STRING
 						&& buffer.limit() == buffer.capacity()) {
 					readLengthCodedString(in);
@@ -76,7 +74,9 @@ public class Parser {
 						if (packetSize < 0) {
 							packetSize = (int) Utils.readLong(buffer.array(),
 									0, 3);
-
+							if(logger.isLoggable(Level.FINE)) {
+								logger.fine("incoming packet size:"+packetSize);
+							}
 						} else {
 							PacketMap<Packet> map = protocol.getPacketMap(
 									waitFor.get(0), firstByte);
@@ -97,8 +97,7 @@ public class Parser {
 								packet = null;
 								return rs;
 							} else {
-								// System.out.println("remaining="+packetSize+"
-								// l="+buffer.limit());
+
 							}
 
 						}
@@ -110,6 +109,21 @@ public class Parser {
 			}
 		}
 		return null;
+	}
+
+	private void readNullTerminated(ByteBuffer in) {
+		for (int i = 0, e = in.remaining(); i < e; i++) {
+			byte b = in.get();
+			packetSize--;
+			if (b != 0) {
+				buffer.put(b);
+			}
+			if (b == 0 || packetSize == 0) {
+				buffer.limit(buffer.position());
+				break;
+			}
+
+		}
 	}
 
 	private void readLengthCodedBinary(ByteBuffer in) {
@@ -148,7 +162,7 @@ public class Parser {
 		} else if (f > 251) {
 			if (buffer.position() > f - 250) {
 				int limit = (int) Utils.readLong(ar, 1, f - 250);
-				
+
 				buffer.clear();
 				buffer.limit(limit);
 			}

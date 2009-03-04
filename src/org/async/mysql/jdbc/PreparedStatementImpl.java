@@ -4,6 +4,9 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.async.jdbc.Callback;
 import org.async.jdbc.Connection;
@@ -21,6 +24,7 @@ import org.async.mysql.protocol.packets.OK;
 
 public class PreparedStatementImpl implements Query, PreparedStatement,
 		HasState, SuccessCallback {
+	private Logger logger=Logger.getLogger("org.async.mysql.jdbc.PreparedStatementImpl");
 	public static int FIELDS = 0;
 	public static int PARAMS = 1;
 	public static int OVER = 2;
@@ -237,10 +241,15 @@ public class PreparedStatementImpl implements Query, PreparedStatement,
 	}
 
 	public void onSuccess(OK ok) {
+		if(logger.isLoggable(Level.FINER)) {
+			logger.fine("#"+statementId+" "+sql+"\n Fields: \n"+Arrays.toString(fields)+"\n Params:\n"+Arrays.toString(params));
+		} else if(logger.isLoggable(Level.FINE)) {
+			logger.fine("#"+statementId+" "+sql);
+		}
 	}
 
 	public void onError(SQLException e) {
-		e.printStackTrace();
+		logger.log(Level.SEVERE,e.getMessage(),e);
 
 	}
 

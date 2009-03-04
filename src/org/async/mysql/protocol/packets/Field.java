@@ -147,10 +147,10 @@ public class Field implements Packet {
 
 	@Override
 	public String toString() {
-		return catalog + " " + db + " " + table + " " + orgTable + " " + name
-				+ " " + orgName + " type=" + type;
+		return "{name: " + name + ", table: " + table + ", db: " + db
+				+ ", orgTable: " + orgTable + ", orgName: " + orgName
+				+ ", type: " + type + ", catalog: " + catalog + ", length:"
+				+ length+", charsetNum: "+charsetNum+", decimals: "+decimals+", def: "+def+", flags: "+flags+"}";
 	}
-	
-
 
 }
