@@ -19,18 +19,18 @@ public class Test {
 
 	public static void main(String[] args) throws IOException, SQLException {
 		SuccessCallback successCallback = new SuccessCallback() {
-			
+
 			@Override
 			public void onSuccess(OK ok) {
 				System.out.println("OK");
 			}
-			
+
 			@Override
 			public void onError(SQLException e) {
 				e.printStackTrace();
-				
+
 			}
-			
+
 		};
 		Multiplexer mpx = new Multiplexer();
 		AsyncConnection connection = new MysqlConnection("localhost",3306, "root", "",
