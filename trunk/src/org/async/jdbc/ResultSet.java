@@ -4,6 +4,10 @@ import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
 
+/**
+ * @author Dmitry Grytsovets
+ *
+ */
 public interface ResultSet {
 	Byte getByte(int idx);
 
@@ -30,7 +34,7 @@ public interface ResultSet {
 	boolean hasNext();
 
 	void next();
-	
+
 	Byte getByte(String name);
 
 	Short getShort(String name);

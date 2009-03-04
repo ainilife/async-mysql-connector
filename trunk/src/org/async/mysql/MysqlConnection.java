@@ -10,8 +10,11 @@ import java.nio.channels.SocketChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.async.jdbc.AsyncConnection;
 import org.async.jdbc.Callback;
@@ -36,8 +39,15 @@ import org.async.mysql.protocol.packets.OK;
 import org.async.mysql.protocol.packets.PSOK;
 import org.async.net.ChannelProcessor;
 
+
+
+/**
+ * @author Dmitry Grytsovets
+ *
+ */
 public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		InnerConnection {
+	private Logger logger = Logger.getLogger("org.async.mysql.MysqlConnection");
 	private Handshake handshake;
 	private final ByteBuffer out = ByteBuffer.allocate(65536);
 	private final ByteBuffer in = ByteBuffer.allocate(65536);
@@ -54,9 +64,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	private SuccessCallback onConnect;
 	private SelectionKey key;
 	private boolean closed = false;
-	private long connected=Long.MIN_VALUE;
+	private long connected = Long.MIN_VALUE;
+	private int reconnects = 3;
 
-	// TODO on connect callback
 
 	public MysqlConnection(String host, int port, String user, String password,
 			String database, Selector selector, SuccessCallback onConnect)
@@ -74,6 +84,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	private void connect() throws IOException, ClosedChannelException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine("Connecting to " + host + ":" + port);
+		}
 		channel = SocketChannel.open();
 		channel.configureBlocking(false);
 		channel.connect(new InetSocketAddress(host, port));
@@ -85,7 +98,10 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	public void auth(String user, String password, String database)
 			throws SQLException {
-
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine("user: " + user + " password: " + password
+					+ " database: " + database);
+		}
 		Utils.writeLong(out, MysqlDefs.CLIENT_LONG_PASSWORD
 				| MysqlDefs.CLIENT_CONNECT_WITH_DB
 				| MysqlDefs.CLIENT_PROTOCOL_41
@@ -124,6 +140,10 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	private void execute(int statementId, int[] types, Object[] params)
 			throws SQLException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine("execute statement #" + statementId + " args: "
+					+ Arrays.toString(params));
+		}
 		out.put((byte) MysqlDefs.COM_STMT_EXECUTE);
 		Utils.writeLong(out, statementId, 4);
 		Utils.writeLong(out, 0, 1);
@@ -158,6 +178,10 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	public void close(int statementId) throws SQLException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine("closing statement #" + statementId);
+		}
+
 		out.put((byte) MysqlDefs.COM_STMT_CLOSE);
 		Utils.writeLong(out, statementId, 4);
 		// parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
@@ -166,6 +190,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	public void close() throws SQLException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine("closing connection");
+		}
 		query(new SilentQuery() {
 			@Override
 			public void query(Connection connection) throws SQLException {
@@ -189,10 +216,6 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				channel.write(out);
 			}
 
-			// byte[] b=new byte[out.limit()];
-			// System.out.println("SEND");
-			// System.arraycopy(out.array(), 0, b, 0,out.limit());
-			// System.out.println(Arrays.toString(b));
 			out.clear();
 			out.position(4);
 		} catch (Exception e) {
@@ -201,6 +224,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	public void query(String sql) throws SQLException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine(sql);
+		}
 		out.put((byte) MysqlDefs.COM_QUERY);
 		out.put(sql.getBytes());
 		send(0);
@@ -210,6 +236,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	@Override
 	public void update(String sql) throws SQLException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine(sql);
+		}
 		out.put((byte) MysqlDefs.COM_QUERY);
 		out.put(sql.getBytes());
 		send(0);
@@ -218,6 +247,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	public void prepare(String sql) throws SQLException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine(sql);
+		}
 		out.put((byte) MysqlDefs.COM_STMT_PREPARE);
 		out.put(sql.getBytes());
 		send(0);
@@ -247,7 +279,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			return toBeXord;
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
-		} //$NON-NLS-1$
+		}
 		return null;
 
 	}
@@ -326,7 +358,11 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 						} else if (result instanceof Handshake) {
 							connected = System.currentTimeMillis();
+							reconnects = 3;
 							this.handshake = (Handshake) result;
+							if (logger.isLoggable(Level.FINE)) {
+								logger.fine(handshake.getServerVersion());
+							}
 							auth(user, password, database);
 						}
 
@@ -338,10 +374,13 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				close(key);
 				// reconnecting
 				connected = 0;
-				connect();
+				reconnects--;
+				if (reconnects > 0) {
+					connect();
+				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.log(Level.SEVERE, e.getMessage(), e);
 		}
 	}
 
@@ -406,9 +445,11 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	@Override
 	public void reset(int statementId) throws SQLException {
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine("reset statement #" + statementId);
+		}
 		out.put((byte) MysqlDefs.COM_STMT_RESET);
 		Utils.writeLong(out, statementId, 4);
-		// parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
 		parser.getWaitFor().add(Protocol.SUCCESS_PACKET);
 		send(0);
 
@@ -427,10 +468,17 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		return connected;
 	}
 
-
 	@Override
 	public boolean isService(SelectionKey key) {
 		return true;
+	}
+
+	public int getReconnects() {
+		return reconnects;
+	}
+
+	public void setReconnects(int reconnects) {
+		this.reconnects = reconnects;
 	}
 
 }
