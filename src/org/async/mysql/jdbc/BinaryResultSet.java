@@ -4,12 +4,15 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.async.mysql.MysqlDefs;
 import org.async.mysql.Utils;
 import org.async.mysql.protocol.packets.Field;
 
 public class BinaryResultSet extends AbstractResultSet<byte[][]> {
+	private static final Logger logger = Logger.getLogger("org.async.mysql.jdbc.BinaryResultSet");
 	private static Calendar calendar = Calendar.getInstance();
 
 	public BinaryResultSet(long fieldCount) {
@@ -63,7 +66,9 @@ public class BinaryResultSet extends AbstractResultSet<byte[][]> {
 					// case MysqlDefs.FIELD_TYPE_NEW_DECIMAL:
 					}
 			} catch (Exception ex) {
-				ex.printStackTrace();
+				if (logger.isLoggable(Level.SEVERE)) {
+					logger.log(Level.SEVERE,ex.getMessage(),ex);
+				}
 			}
 		}
 		return unpackedRow;

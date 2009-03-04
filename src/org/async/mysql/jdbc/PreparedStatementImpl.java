@@ -24,7 +24,7 @@ import org.async.mysql.protocol.packets.OK;
 
 public class PreparedStatementImpl implements Query, PreparedStatement,
 		HasState, SuccessCallback {
-	private Logger logger=Logger.getLogger("org.async.mysql.jdbc.PreparedStatementImpl");
+	private static final Logger logger=Logger.getLogger("org.async.mysql.jdbc.PreparedStatementImpl");
 	public static int FIELDS = 0;
 	public static int PARAMS = 1;
 	public static int OVER = 2;

@@ -5,11 +5,14 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.async.mysql.MysqlDefs;
 import org.async.mysql.protocol.packets.Field;
 
 public class StringResultSet extends AbstractResultSet<String[]> {
+	private static final Logger logger = Logger.getLogger("org.async.mysql.jdbc.StringResultSet");
 	public static DateFormat datetimeFormat = new SimpleDateFormat(
 			"yyyy-MM-dd HH:mm:ss");
 	public static DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -63,7 +66,9 @@ public class StringResultSet extends AbstractResultSet<String[]> {
 					}
 				}
 			} catch (Exception ex) {
-				ex.printStackTrace();
+				if (logger.isLoggable(Level.SEVERE)) {
+					logger.log(Level.SEVERE,ex.getMessage(),ex);
+				}
 			}
 		}
 		return unpackedRow;

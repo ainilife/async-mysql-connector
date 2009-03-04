@@ -38,6 +38,7 @@ import org.async.mysql.protocol.packets.Handshake;
 import org.async.mysql.protocol.packets.OK;
 import org.async.mysql.protocol.packets.PSOK;
 import org.async.net.ChannelProcessor;
+import org.async.utils.log.LogUtils;
 
 
 
@@ -47,7 +48,7 @@ import org.async.net.ChannelProcessor;
  */
 public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		InnerConnection {
-	private Logger logger = Logger.getLogger("org.async.mysql.MysqlConnection");
+	private static final Logger logger = Logger.getLogger("org.async.mysql.MysqlConnection");
 	private Handshake handshake;
 	private final ByteBuffer out = ByteBuffer.allocate(65536);
 	private final ByteBuffer in = ByteBuffer.allocate(65536);
@@ -190,12 +191,12 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	public void close() throws SQLException {
-		if (logger.isLoggable(Level.FINE)) {
-			logger.fine("closing connection");
-		}
 		query(new SilentQuery() {
 			@Override
 			public void query(Connection connection) throws SQLException {
+				if (logger.isLoggable(Level.FINE)) {
+					logger.fine("closing connection");
+				}
 				out.put((byte) MysqlDefs.COM_QUIT);
 				send(0);
 				close(key);
@@ -209,13 +210,18 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	private void send(int num) throws SQLException {
 		try {
 			out.flip();
+			if (logger.isLoggable(Level.FINER)) {
+				logger.finer("Send: "+out.limit()+" bytes Num: "+num);
+			}
 			Utils.writeLong(out, out.limit() - 4, 3);
 			Utils.writeLong(out, num, 1);
+			if (logger.isLoggable(Level.FINEST)) {
+				logger.finest("Send:\n"+LogUtils.dump(out, 16, 4, 16,2));
+			}
 			out.position(0);
 			while (out.remaining() > 0) {
 				channel.write(out);
 			}
-
 			out.clear();
 			out.position(4);
 		} catch (Exception e) {
@@ -257,7 +263,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	}
 
-	private static byte[] scramble411(String password, String seed) {
+	private  byte[] scramble411(String password, String seed) {
 		MessageDigest md;
 		try {
 			md = MessageDigest.getInstance("SHA-1");
@@ -278,7 +284,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			}
 			return toBeXord;
 		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
+			if (logger.isLoggable(Level.SEVERE)) {
+				logger.log(Level.SEVERE,e.getMessage(),e);
+			}
 		}
 		return null;
 
@@ -295,7 +303,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		try {
 			channel.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			if (logger.isLoggable(Level.SEVERE)) {
+				logger.log(Level.SEVERE,e.getMessage(),e);
+			}
 		}
 	}
 
@@ -306,7 +316,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			key.interestOps(SelectionKey.OP_READ);
 			parser.getWaitFor().add(Protocol.HAND_SHAKE);
 		} catch (IOException e) {
-			e.printStackTrace();
+			if (logger.isLoggable(Level.SEVERE)) {
+				logger.log(Level.SEVERE,e.getMessage(),e);
+			}
 		}
 	}
 
@@ -317,8 +329,14 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			while ((read = channel.read(in)) > 0) {
 				in.limit(read);
 				in.position(0);
+				if (logger.isLoggable(Level.FINEST)) {
+					logger.finest("Receive:\n"+LogUtils.dump(in, 16, 4, 16,2));
+				}
 				while (in.remaining() > 0) {
 					Packet result = parser.parse(in);
+					if(logger.isLoggable(Level.FINER)) {
+						logger.fine("Receiving packet "+result.getClass().getSimpleName());
+					}
 					if (result != null) {
 						if (result instanceof EOF) {
 							if (((HasState) parser.getMessage()).isOver()) {
@@ -357,13 +375,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 								key.interestOps(SelectionKey.OP_WRITE);
 
 						} else if (result instanceof Handshake) {
-							connected = System.currentTimeMillis();
-							reconnects = 3;
-							this.handshake = (Handshake) result;
-							if (logger.isLoggable(Level.FINE)) {
-								logger.fine(handshake.getServerVersion());
-							}
-							auth(user, password, database);
+							handshake(result);
 						}
 
 					}
@@ -382,6 +394,16 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		} catch (Exception e) {
 			logger.log(Level.SEVERE, e.getMessage(), e);
 		}
+	}
+
+	private void handshake(Packet result) throws SQLException {
+		connected = System.currentTimeMillis();
+		reconnects = 3;
+		this.handshake = (Handshake) result;
+		if (logger.isLoggable(Level.FINE)) {
+			logger.fine(handshake.getServerVersion());
+		}
+		auth(user, password, database);
 	}
 
 	public void write(SelectionKey key) {

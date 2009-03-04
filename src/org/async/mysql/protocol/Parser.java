@@ -8,9 +8,10 @@ import java.util.logging.Logger;
 
 import org.async.jdbc.Callback;
 import org.async.mysql.Utils;
+import org.async.utils.log.LogUtils;
 
 public class Parser {
-	private Logger logger=Logger.getLogger("org.async.mysql.protocol.Parser");
+	private static final Logger logger = Logger.getLogger("org.async.mysql.protocol.Parser");
 	private Protocol protocol = new Protocol41();
 	private List<Integer> waitFor = new LinkedList<Integer>();
 	private int dataIdx = 0;
@@ -40,24 +41,35 @@ public class Parser {
 					itemSize = packetSize < 0 ? 4 : protocol.getPacketMap(
 							waitFor.get(0), firstByte)
 							.getSize(dataIdx, message);
-					if(logger.isLoggable(Level.FINE)) {
-						logger.fine("identifing data size packet map: "+waitFor.get(0)+"-"+firstByte+" dataIdx: "+dataIdx);
+					if (logger.isLoggable(Level.FINER)) {
+						logger.finer("identifing packet : " + waitFor.get(0)
+								+ " : " + (firstByte==null?null:(int)(firstByte&0xFF)));
+						logger.finer("identifing data size dataIdx: " + dataIdx);
 					}
 					if (itemSize != 0 && itemSize != Integer.MAX_VALUE
 							&& itemSize != Integer.MIN_VALUE) {
-						if(logger.isLoggable(Level.FINE)) {
-							logger.fine("fixed size item: "+itemSize);
+						if (logger.isLoggable(Level.FINER)) {
+							logger.finer("Fixed size item found: " + itemSize);
 						}
 						buffer.limit(itemSize);
 					}
 				}
 				if (itemSize == 0) {
+					if (logger.isLoggable(Level.FINER)) {
+						logger.finer("Reading Null Terminated String");
+					}
 					readNullTerminated(in);
 				} else if (itemSize == Protocol.LENGTH_CODED_STRING
 						&& buffer.limit() == buffer.capacity()) {
+					if (logger.isLoggable(Level.FINER)) {
+						logger.finer("Reading Length Coded String");
+					}
 					readLengthCodedString(in);
 				} else if (itemSize == Protocol.LENGTH_CODED_BINARY
 						&& buffer.limit() == buffer.capacity()) {
+					if (logger.isLoggable(Level.FINER)) {
+						logger.finer("Reading Length Coded Binary");
+					}
 					readLengthCodedBinary(in);
 				} else {
 					int length = buffer.remaining();
@@ -74,19 +86,35 @@ public class Parser {
 						if (packetSize < 0) {
 							packetSize = (int) Utils.readLong(buffer.array(),
 									0, 3);
-							if(logger.isLoggable(Level.FINE)) {
-								logger.fine("incoming packet size:"+packetSize);
+							if (logger.isLoggable(Level.FINER)) {
+								logger.finer("Packet size:"
+										+ packetSize);
 							}
 						} else {
 							PacketMap<Packet> map = protocol.getPacketMap(
 									waitFor.get(0), firstByte);
 							packet = map.getAssembler().process(dataIdx,
 									isNull ? null : buffer, packet, message);
+
+							if (logger.isLoggable(Level.FINER)) {
+								logger.finer("Assemble Packet "
+										+ packet.getClass() + " dataIdx: "
+										+ dataIdx + " Assembler: "
+										+ map.getAssembler());
+							}
+							if (logger.isLoggable(Level.FINEST)) {
+								logger.finest("Data:\n"
+										+ LogUtils.dump(buffer, 16, 4, 16,2));
+							}
 							dataIdx++;
 							isNull = false;
 							if (dataIdx == map.size() || packetSize == 0) {
 								if (packetSize != 0) {
 									skip = packetSize;
+								}
+								if (logger.isLoggable(Level.FINER)) {
+									logger.finer("Packet Completed. Skip: "
+											+ skip + " bytes");
 								}
 								dataIdx = 0;
 								firstByte = null;
@@ -135,18 +163,35 @@ public class Parser {
 		if (f == 251) {
 			buffer.limit(0);
 			isNull = true;
+			if (logger.isLoggable(Level.FINER)) {
+				logger.finer("Length Coded Binary is NULL");
+			}
+
 		} else if (f > 251) {
 			if (f == 252) {
 				buffer.limit(2);
+				if (logger.isLoggable(Level.FINER)) {
+					logger.finer("Length Coded Binary Length: 2 bytes");
+				}
 			} else if (f == 253) {
 				buffer.limit(3);
+				if (logger.isLoggable(Level.FINER)) {
+					logger.finer("Length Coded Binary Length: 3 bytes");
+				}
 			} else if (f == 254) {
 				buffer.limit(8);
+				if (logger.isLoggable(Level.FINER)) {
+					logger.finer("Length Coded Binary Length: 8 bytes");
+				}
 			}
 
 		} else {
+			if (logger.isLoggable(Level.FINER)) {
+				logger.finer("Length Coded Binary Length: 1 byte");
+			}
 			buffer.limit(1);
 			buffer.put((byte) f);
+
 		}
 	}
 
@@ -162,9 +207,12 @@ public class Parser {
 		} else if (f > 251) {
 			if (buffer.position() > f - 250) {
 				int limit = (int) Utils.readLong(ar, 1, f - 250);
-
 				buffer.clear();
 				buffer.limit(limit);
+				if (logger.isLoggable(Level.FINER)) {
+					logger.finer("Length Coded String Length: " + limit
+							+ " bytes");
+				}
 			}
 		} else {
 			buffer.clear();
