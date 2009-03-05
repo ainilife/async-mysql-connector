@@ -365,9 +365,12 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 							if (!queries.isEmpty())
 								key.interestOps(SelectionKey.OP_WRITE);
 						} else if (result instanceof Error) {
+							Error e = (Error) result;
 							Callback callback = callbacks.remove(0);
+							if(logger.isLoggable(Level.WARNING)) {
+								logger.log(Level.WARNING,e.getMessage());
+							}
 							if (callback != null) {
-								Error e = (Error) result;
 								callback.onError(new SQLException(e
 										.getMessage(), e.getSqlState()));
 							}
@@ -416,6 +419,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			}
 		} catch (SQLException e) {
 			Callback callback = callbacks.remove(0);
+			if(logger.isLoggable(Level.WARNING)) {
+				logger.log(Level.WARNING,e.getMessage(),e);
+			}
 			if (callback != null) {
 				callback.onError(e);
 			}
