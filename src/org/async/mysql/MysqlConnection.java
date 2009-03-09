@@ -40,15 +40,14 @@ import org.async.mysql.protocol.packets.PSOK;
 import org.async.net.ChannelProcessor;
 import org.async.utils.log.LogUtils;
 
-
-
 /**
  * @author Dmitry Grytsovets
  *
  */
 public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		InnerConnection {
-	private static final Logger logger = Logger.getLogger("org.async.mysql.MysqlConnection");
+	private static final Logger logger = Logger
+			.getLogger("org.async.mysql.MysqlConnection");
 	private Handshake handshake;
 	private final ByteBuffer out = ByteBuffer.allocate(65536);
 	private final ByteBuffer in = ByteBuffer.allocate(65536);
@@ -67,7 +66,6 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	private boolean closed = false;
 	private long connected = Long.MIN_VALUE;
 	private int reconnects = 3;
-
 
 	public MysqlConnection(String host, int port, String user, String password,
 			String database, Selector selector, SuccessCallback onConnect)
@@ -211,12 +209,12 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		try {
 			out.flip();
 			if (logger.isLoggable(Level.FINER)) {
-				logger.finer("Send: "+out.limit()+" bytes Num: "+num);
+				logger.finer("Send: " + out.limit() + " bytes Num: " + num);
 			}
 			Utils.writeLong(out, out.limit() - 4, 3);
 			Utils.writeLong(out, num, 1);
 			if (logger.isLoggable(Level.FINEST)) {
-				logger.finest("Send:\n"+LogUtils.dump(out, 16, 4, 16,2));
+				logger.finest("Send:\n" + LogUtils.dump(out, 16, 4, 16, 2));
 			}
 			out.position(0);
 			while (out.remaining() > 0) {
@@ -225,7 +223,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			out.clear();
 			out.position(4);
 		} catch (Exception e) {
-			throw new SQLException(e.getMessage());
+			throw new SQLException(e);
 		}
 	}
 
@@ -263,7 +261,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	}
 
-	private  byte[] scramble411(String password, String seed) {
+	private byte[] scramble411(String password, String seed) {
 		MessageDigest md;
 		try {
 			md = MessageDigest.getInstance("SHA-1");
@@ -285,7 +283,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			return toBeXord;
 		} catch (NoSuchAlgorithmException e) {
 			if (logger.isLoggable(Level.SEVERE)) {
-				logger.log(Level.SEVERE,e.getMessage(),e);
+				logger.log(Level.SEVERE, e.getMessage(), e);
 			}
 		}
 		return null;
@@ -304,7 +302,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			channel.close();
 		} catch (IOException e) {
 			if (logger.isLoggable(Level.SEVERE)) {
-				logger.log(Level.SEVERE,e.getMessage(),e);
+				logger.log(Level.SEVERE, e.getMessage(), e);
 			}
 		}
 	}
@@ -317,7 +315,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			parser.getWaitFor().add(Protocol.HAND_SHAKE);
 		} catch (IOException e) {
 			if (logger.isLoggable(Level.SEVERE)) {
-				logger.log(Level.SEVERE,e.getMessage(),e);
+				logger.log(Level.SEVERE, e.getMessage(), e);
 			}
 		}
 	}
@@ -330,12 +328,14 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				in.limit(read);
 				in.position(0);
 				if (logger.isLoggable(Level.FINEST)) {
-					logger.finest("Receive:\n"+LogUtils.dump(in, 16, 4, 16,2));
+					logger.finest("Receive:\n"
+							+ LogUtils.dump(in, 16, 4, 16, 2));
 				}
 				while (in.remaining() > 0) {
 					Packet result = parser.parse(in);
-					if(logger.isLoggable(Level.FINER)) {
-						logger.fine("Receiving packet "+result.getClass().getSimpleName());
+					if (logger.isLoggable(Level.FINER)) {
+						logger.fine("Receiving packet "
+								+ result.getClass().getSimpleName());
 					}
 					if (result != null) {
 						if (result instanceof EOF) {
@@ -367,8 +367,8 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 						} else if (result instanceof Error) {
 							Error e = (Error) result;
 							Callback callback = callbacks.remove(0);
-							if(logger.isLoggable(Level.WARNING)) {
-								logger.log(Level.WARNING,e.getMessage());
+							if (logger.isLoggable(Level.WARNING)) {
+								logger.log(Level.WARNING, e.getMessage());
 							}
 							if (callback != null) {
 								callback.onError(new SQLException(e
@@ -388,14 +388,18 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			if (read == -1) {
 				close(key);
 				// reconnecting
-				connected = 0;
-				reconnects--;
-				if (reconnects > 0) {
-					connect();
-				}
+				reconnect();
 			}
 		} catch (Exception e) {
 			logger.log(Level.SEVERE, e.getMessage(), e);
+		}
+	}
+
+	private void reconnect() throws IOException, ClosedChannelException {
+		connected = 0;
+		reconnects--;
+		if (reconnects > 0) {
+			connect();
 		}
 	}
 
@@ -410,20 +414,33 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	public void write(SelectionKey key) {
+		Query q = queries.remove(0);
 		try {
-			Query q = queries.remove(0);
 			q.query(this);
 			if (!(q instanceof SilentQuery) || queries.isEmpty()) {
 				if (this.key != null)
 					key.interestOps(SelectionKey.OP_READ);
 			}
 		} catch (SQLException e) {
-			Callback callback = callbacks.remove(0);
-			if(logger.isLoggable(Level.WARNING)) {
-				logger.log(Level.WARNING,e.getMessage(),e);
+			if (logger.isLoggable(Level.WARNING)) {
+				logger.log(Level.WARNING, e.getMessage(), e);
 			}
-			if (callback != null) {
-				callback.onError(e);
+			Throwable cause = e.getCause();
+			if (cause != null && cause instanceof IOException) {
+				queries.add(0, q);
+				close(key);
+				try {
+					reconnect();
+				} catch (IOException e1) {
+					if (logger.isLoggable(Level.SEVERE)) {
+						logger.log(Level.SEVERE, e.getMessage(), e);
+					}
+				}
+			} else if (!(q instanceof SilentQuery)) {
+				Callback callback = callbacks.remove(0);
+				if (callback != null) {
+					callback.onError(e);
+				}
 			}
 		}
 	}
