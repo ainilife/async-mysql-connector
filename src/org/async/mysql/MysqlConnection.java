@@ -386,8 +386,6 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 				in.clear();
 			}
 			if (read == -1) {
-				close(key);
-				// reconnecting
 				reconnect();
 			}
 		} catch (Exception e) {
@@ -396,6 +394,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	private void reconnect() throws IOException, ClosedChannelException {
+		close(key);
 		connected = 0;
 		reconnects--;
 		if (reconnects > 0) {
@@ -428,7 +427,6 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			Throwable cause = e.getCause();
 			if (cause != null && cause instanceof IOException) {
 				queries.add(0, q);
-				close(key);
 				try {
 					reconnect();
 				} catch (IOException e1) {
