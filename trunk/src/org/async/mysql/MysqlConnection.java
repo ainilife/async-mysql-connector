@@ -42,7 +42,7 @@ import org.async.utils.log.LogUtils;
 
 /**
  * @author Dmitry Grytsovets
- *
+ * 
  */
 public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		InnerConnection {
@@ -388,8 +388,21 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 			if (read == -1) {
 				reconnect();
 			}
+		} catch (IOException e) {
+			if(logger.isLoggable(Level.WARNING)) {
+				logger.log(Level.WARNING, e.getMessage(), e);
+			}
+			try {
+				reconnect();
+			} catch (Exception e1) {
+				if(logger.isLoggable(Level.SEVERE)) {
+					logger.log(Level.SEVERE, e1.getMessage(), e1);
+				}
+			}
 		} catch (Exception e) {
-			logger.log(Level.SEVERE, e.getMessage(), e);
+			if(logger.isLoggable(Level.SEVERE)) {
+				logger.log(Level.SEVERE, e.getMessage(), e);
+			}
 		}
 	}
 
