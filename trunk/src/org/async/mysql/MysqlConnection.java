@@ -66,6 +66,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	private boolean closed = false;
 	private long connected = Long.MIN_VALUE;
 	private int reconnects = 3;
+	private boolean authorized = true;
 
 	public MysqlConnection(String host, int port, String user, String password,
 			String database, Selector selector, SuccessCallback onConnect)
@@ -353,6 +354,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 									key.interestOps(SelectionKey.OP_WRITE);
 							}
 						} else if (result instanceof OK) {
+							authorized = true;
 							Callback callback = callbacks.remove(0);
 							if (callback != null) {
 								((SuccessCallback) callback)
@@ -417,7 +419,9 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 
 	private void handshake(Packet result) throws SQLException {
 		connected = System.currentTimeMillis();
-		reconnects = 3;
+		if (authorized)
+			reconnects = 3;
+		authorized = false;
 		this.handshake = (Handshake) result;
 		if (logger.isLoggable(Level.FINE)) {
 			logger.fine(handshake.getServerVersion());
