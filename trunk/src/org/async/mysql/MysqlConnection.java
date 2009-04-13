@@ -42,7 +42,7 @@ import org.async.utils.log.LogUtils;
 
 /**
  * @author Dmitry Grytsovets
- * 
+ *
  */
 public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 		InnerConnection {
@@ -516,7 +516,7 @@ public class MysqlConnection implements ChannelProcessor, AsyncConnection,
 	}
 
 	public int load() {
-		return Math.max(queries.size(), callbacks.size());
+		return reconnects==0?0:Math.max(queries.size(), callbacks.size());
 	}
 
 	@Override
